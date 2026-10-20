@@ -24,6 +24,7 @@ export class ChatwootClient {
   private readonly apiToken: string;
   private readonly accountId: number;
   private readonly inboxId: number;
+  private readonly knownLabels = new Set<string>();
 
   /**
    * Construtor do ChatwootClient configurado via AppConfig.
@@ -108,7 +109,9 @@ export class ChatwootClient {
    */
   public async listLabels(): Promise<ChatwootLabel[]> {
     const data = await this.request<{payload: ChatwootLabel[]}>(`/accounts/${this.accountId}/labels`);
-    return data.payload ?? [];
+    const labels = data.payload ?? [];
+    labels.forEach(l => this.knownLabels.add(l.title.toLowerCase()));
+    return labels;
   }
 
   /**
@@ -151,6 +154,7 @@ export class ChatwootClient {
         show_on_sidebar: true,
       }),
     });
+    this.knownLabels.add(sanitizedTitle.toLowerCase());
     return data.payload;
   }
 
@@ -240,8 +244,20 @@ export class ChatwootClient {
    * @param labels Lista de nomes de marcadores.
    */
   public async addLabelsToConversation(conversationId: number, labels: string[]): Promise<void> {
-    const sanitizedLabels = labels.map(ChatwootClient.sanitizeLabel).filter(Boolean);
+    const sanitizedLabels = Array.from(new Set(labels.map(ChatwootClient.sanitizeLabel).filter(Boolean)));
     if (sanitizedLabels.length === 0) return;
+
+    // Garante que cada label exista na conta antes de vincular à conversa
+    for (const label of sanitizedLabels) {
+      if (!this.knownLabels.has(label.toLowerCase())) {
+        try {
+          await this.createLabel(label);
+        } catch {
+          // Se já existir ou falhar pontualmente, prossegue
+        }
+      }
+    }
+
     await this.request<{payload: string[]}>(`/accounts/${this.accountId}/conversations/${conversationId}/labels`, {
       method: 'POST',
       body: JSON.stringify({labels: sanitizedLabels}),
