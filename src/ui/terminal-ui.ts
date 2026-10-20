@@ -50,6 +50,7 @@ export class TerminalUI {
    */
   private writeToFile(text: string): void {
     if (this.logStream) {
+      // eslint-disable-next-line no-control-regex
       const clean = text.replace(/\x1b\[[0-9;]*m/g, '');
       const timestamp = new Date().toISOString();
       this.logStream.write(`[${timestamp}] ${clean}\n`);
