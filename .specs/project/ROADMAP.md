@@ -4,7 +4,7 @@
 
 - [x] Base project configuration (TypeScript, oxlint, oxfmt, dotenv, zod)
 - [x] Project specification & design via `graph-spec-design`
-- [ ] Core configuration loader & validation with `MIGRATION_TICKET_ID` (`*` support)
+- [ ] Core configuration loader & validation with `MIGRATION_TICKET_ID_LIST` (`*` support)
 - [ ] Zendesk API Client (ticket retrieval & comments fetch)
 - [ ] Chatwoot API Client (contact sync, conversation creation, message creation)
 - [ ] Migration orchestrator with single-ticket vs all-tickets loop

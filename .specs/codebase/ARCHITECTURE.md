@@ -21,7 +21,7 @@ The migration POC follows a modular pipeline pattern:
 
 1. **Config Layer (`src/config/`)**:
    - Parses and validates environment variables via Zod schemas.
-   - Interprets `MIGRATION_TICKET_ID`: either specific numeric ID (e.g. `"1234"`) or wildcard (`"*"`).
+   - Interprets `MIGRATION_TICKET_ID_LIST`: either specific numeric ID (e.g. `"1234"`) or wildcard (`"*"`).
 
 2. **Client Layer (`src/clients/`)**:
    - `ZendeskClient`: Authenticates via basic auth (`email/token:api_token`), handles ticket retrieval (`/api/v2/tickets/{id}.json` or paginated `/api/v2/tickets.json`), and fetches comments (`/api/v2/tickets/{id}/comments.json`).

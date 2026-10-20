@@ -87,12 +87,12 @@ Abaixo está o passo a passo detalhado de onde encontrar cada uma das credenciai
 
 ### 3. Configurações de Migração
 
-| Variável               | Opções                        | Descrição                                                                                                                                                                                                                                                                                                     |
-| ---------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `MIGRATION_TICKET_ID`  | `101`<br>`101,102,103`<br>`*` | • **ID único** (ex: `101`): modo de segurança máxima para testes em produção com apenas 1 chamado.<br>• **Lista delimitada por vírgula** (ex: `101,102,103`): processa apenas a lista específica informada.<br>• **Asterisco `*`**: modo lote contínuo, busca chamados sem a tag `chatwoot` até zerar a fila. |
-| `MIGRATION_LOCALE`     | `pt-BR` ou `en-US`            | Dicionário de internacionalização utilizado para formatar notas, datas, papéis de usuários, sumário de anexos e textos de abertura no Chatwoot.                                                                                                                                                               |
-| `MIGRATION_DRY_RUN`    | `true` ou `false`             | Se `true`, conecta nas APIs, valida permissões, busca chamados e simula todo o fluxo no terminal com logs **sem criar registros** no Chatwoot e **sem alterar tags** no Zendesk.                                                                                                                              |
-| `MIGRATION_BATCH_SIZE` | `25`                          | Tamanho da página nas consultas do Zendesk (padrão: 25).                                                                                                                                                                                                                                                      |
+| Variável                   | Opções                        | Descrição                                                                                                                                                                                                                                                                                                     |
+| -------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MIGRATION_TICKET_ID_LIST` | `101`<br>`101,102,103`<br>`*` | • **ID único** (ex: `101`): modo de segurança máxima para testes em produção com apenas 1 chamado.<br>• **Lista delimitada por vírgula** (ex: `101,102,103`): processa apenas a lista específica informada.<br>• **Asterisco `*`**: modo lote contínuo, busca chamados sem a tag `chatwoot` até zerar a fila. |
+| `MIGRATION_LOCALE`         | `pt-BR` ou `en-US`            | Dicionário de internacionalização utilizado para formatar notas, datas, papéis de usuários, sumário de anexos e textos de abertura no Chatwoot.                                                                                                                                                               |
+| `MIGRATION_DRY_RUN`        | `true` ou `false`             | Se `true`, conecta nas APIs, valida permissões, busca chamados e simula todo o fluxo no terminal com logs **sem criar registros** no Chatwoot e **sem alterar tags** no Zendesk.                                                                                                                              |
+| `MIGRATION_BATCH_SIZE`     | `25`                          | Tamanho da página nas consultas do Zendesk (padrão: 25).                                                                                                                                                                                                                                                      |
 
 ---
 
@@ -136,7 +136,7 @@ pnpm run format:check
 1. **Passo 1 (Autenticação & Permissões)**: Conecta no Zendesk (`/users/me.json`) e Chatwoot (`/profile`) e valida papéis de agente/administrador.
 2. **Passo 2 (Mensuração e Migração de Arestas)**: Compara tags, grupos e Custom Roles do Zendesk com o Chatwoot. Cria automaticamente as tags (labels) e equipes (teams) faltantes.
 3. **Passo 3 (Resolução de Alvo)**:
-   - Se houver lista de IDs (`MIGRATION_TICKET_ID=101,102`), verifica se cada um existe no Zendesk antes de processar.
+   - Se houver lista de IDs (`MIGRATION_TICKET_ID_LIST=101,102`), verifica se cada um existe no Zendesk antes de processar.
    - Se for `*`, inicia o loop de busca por chamados sem a tag `chatwoot`.
 4. **Passo 4 & 5 (Extração, Anexos e Cadastro)**:
    - Extrai o chamado, comentários e links/metadados de anexos.

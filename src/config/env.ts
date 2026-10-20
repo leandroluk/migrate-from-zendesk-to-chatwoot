@@ -14,7 +14,7 @@ export const envSchema = z.object({
   CHATWOOT_ACCOUNT_ID: z.coerce.number().int().positive(),
   CHATWOOT_INBOX_ID: z.coerce.number().int().positive(),
 
-  MIGRATION_TICKET_ID: z.string().prefault('*'),
+  MIGRATION_TICKET_ID_LIST: z.string().prefault('*'),
   MIGRATION_BATCH_SIZE: z.coerce.number().int().positive().prefault(25),
   MIGRATION_LOCALE: z.string().prefault('pt-BR'),
   MIGRATION_DRY_RUN: z.preprocess((v: string) => /^(true|1)$/i.test(v.toLowerCase()), z.boolean()),
@@ -48,7 +48,7 @@ export class ConfigService {
   }
 
   public isAllTicketsMode(): boolean {
-    return this.config.MIGRATION_TICKET_ID === '*';
+    return this.config.MIGRATION_TICKET_ID_LIST === '*';
   }
 
   public hasExplicitTicketList(): boolean {
@@ -56,8 +56,8 @@ export class ConfigService {
   }
 
   public getTargetTicketIds(): number[] {
-    if (this.config.MIGRATION_TICKET_ID === '*') return [];
-    return this.config.MIGRATION_TICKET_ID.split(',')
+    if (this.config.MIGRATION_TICKET_ID_LIST === '*') return [];
+    return this.config.MIGRATION_TICKET_ID_LIST.split(',')
       .map(id => parseInt(id.trim(), 10))
       .filter(Boolean);
   }

@@ -14,5 +14,5 @@
 
 ## 3. Large Ticket Volumes with `*`
 
-- When `MIGRATION_TICKET_ID=*`, migrating hundreds or thousands of tickets without interruption requires batching and fault tolerance.
+- When `MIGRATION_TICKET_ID_LIST=*`, migrating hundreds or thousands of tickets without interruption requires batching and fault tolerance.
 - **Mitigation**: Process in batches, log each processed ticket ID, and keep running on errors.

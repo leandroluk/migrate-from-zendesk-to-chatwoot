@@ -4,7 +4,7 @@
 
 - **REQ**: REQ-MIG-001
 - **Symbols**: ConfigService
-- **What**: Implementar classe singleton `ConfigService` que carrega `.env` e valida os dados de conexão do Zendesk, Chatwoot e a propriedade `MIGRATION_TICKET_ID` com suporte a `*` ou ID numérico.
+- **What**: Implementar classe singleton `ConfigService` que carrega `.env` e valida os dados de conexão do Zendesk, Chatwoot e a propriedade `MIGRATION_TICKET_ID_LIST` com suporte a `*` ou ID numérico.
 - **Where**: `src/config/env.ts`
 - **Depends on**: none
 - **Done when**: O serviço carrega variáveis válidas e rejeita variáveis inválidas com mensagens legíveis.

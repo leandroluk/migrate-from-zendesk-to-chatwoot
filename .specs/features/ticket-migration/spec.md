@@ -13,7 +13,7 @@ O fluxo valida permissões de acesso em ambas as plataformas, sincroniza "aresta
 ## Requirements
 
 - REQ-MIG-001: Configuração de Ambiente (`.env`).
-  Validar variáveis de ambiente via Zod (`ZENDESK_SUBDOMAIN`, `ZENDESK_EMAIL`, `ZENDESK_API_TOKEN`, `CHATWOOT_BASE_URL`, `CHATWOOT_API_TOKEN`, `CHATWOOT_ACCOUNT_ID`, `CHATWOOT_INBOX_ID`, `MIGRATION_TICKET_ID`, `MIGRATION_DRY_RUN`). O `MIGRATION_TICKET_ID` pode ser um ID numérico único, uma lista delimitada por vírgula (ex: `"123,456,789"`), ou `*` (ou omitido) para migração em lote.
+  Validar variáveis de ambiente via Zod (`ZENDESK_SUBDOMAIN`, `ZENDESK_EMAIL`, `ZENDESK_API_TOKEN`, `CHATWOOT_BASE_URL`, `CHATWOOT_API_TOKEN`, `CHATWOOT_ACCOUNT_ID`, `CHATWOOT_INBOX_ID`, `MIGRATION_TICKET_ID_LIST`, `MIGRATION_DRY_RUN`). O `MIGRATION_TICKET_ID_LIST` pode ser um ID numérico único, uma lista delimitada por vírgula (ex: `"123,456,789"`), ou `*` (ou omitido) para migração em lote.
 
 - REQ-MIG-002: Verificador de Autenticação e Permissões (Passo 1 do fluxo).
   Autenticar no Zendesk (`GET /api/v2/users/me.json`) e no Chatwoot (`GET /api/v1/profile` ou `/api/v1/accounts/{account_id}`) e verificar ativamente se as credenciais possuem permissões necessárias (Zendesk: permissão de agente/admin para ler tickets, usuários, tags e gravar tags; Chatwoot: permissão de administrador na conta para consultar/criar contatos, conversas, mensagens, tags e equipes).

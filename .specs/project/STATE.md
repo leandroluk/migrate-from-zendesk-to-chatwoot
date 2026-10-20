@@ -9,7 +9,7 @@ Arquitetura da POC implementada com sucesso em TypeScript, POO, oxlint, oxfmt e 
 
 ## Todos
 
-- [ ] Executar primeiro teste prático em produção com 1 chamado via `MIGRATION_TICKET_ID=<id>`
+- [ ] Executar primeiro teste prático em produção com 1 chamado via `MIGRATION_TICKET_ID_LIST=<id>`
 - [ ] Implementar upload binário direto de anexos na API de attachments do Chatwoot (se necessário para a POC)
 - [ ] Adicionar suporte a mapeamento de agentes Zendesk -> agentes Chatwoot
 
@@ -20,7 +20,7 @@ Arquitetura da POC implementada com sucesso em TypeScript, POO, oxlint, oxfmt e 
 ## Recent Decisions (Last 15)
 
 - [2026-10-20] Implementado DictionaryService com MIGRATION_LOCALE no .env (suporte a pt-BR, en-US) e integração dinâmica com a Custom Roles API do Zendesk para resolução real de papéis.
-- [2026-10-20] Suporte a lista delimitada por vírgula em MIGRATION_TICKET_ID (ex: "123,456,789") permitindo loop sobre lista arbitrária de chamados ou lote total com "*".
+- [2026-10-20] Suporte a lista delimitada por vírgula em MIGRATION_TICKET_ID_LIST (ex: "123,456,789") permitindo loop sobre lista arbitrária de chamados ou lote total com "*".
 - [2026-10-20] Atualizado tsconfig.json com moduleResolution "bundler", eliminadas extensões .js nos imports e adotado padrão de barrels (index.ts) em todos os módulos.
 - [2026-10-20] Concluída implementação completa dos 8 componentes da POC de migração.
 - [2026-10-20] Definido o fluxo de 5 passos: 1. Permissões, 2. Arestas (tags/grupos), 3. Checagem de ID seguro, 4. Loop sem tag 'chatwoot', 5. Extração com anexos, criação no Chatwoot e tag no Zendesk.
