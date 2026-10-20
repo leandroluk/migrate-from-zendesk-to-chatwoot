@@ -25,10 +25,12 @@ const envSchema = z.object({
   MIGRATION_TICKET_ID: z
     .string()
     .default("*")
-    .refine(
-      (val) => val === "*" || /^\d+$/.test(val),
-      'MIGRATION_TICKET_ID deve ser "*" ou um ID numérico de chamado.',
-    ),
+    .refine((val) => {
+      const trimmed = val.trim();
+      if (trimmed === "*") return true;
+      const parts = trimmed.split(",").map((p) => p.trim());
+      return parts.length > 0 && parts.every((p) => /^\d+$/.test(p));
+    }, 'MIGRATION_TICKET_ID deve ser "*" ou uma lista de IDs separados por vírgula (ex: "123,456,789").'),
   MIGRATION_BATCH_SIZE: z.coerce.number().int().positive().default(25),
   MIGRATION_DRY_RUN: z
     .string()
@@ -91,23 +93,54 @@ export class ConfigService {
   }
 
   /**
-   * Indica se a migração está configurada para executar apenas um chamado seguro por ID.
+   * Indica se a migração deve processar todos os chamados sem a tag chatwoot.
    *
-   * @returns true se um ID numérico foi configurado; false se for '*' (lote).
+   * @returns true se MIGRATION_TICKET_ID for '*'; false se houver lista delimitada de IDs.
    */
-  public isSingleTicketMode(): boolean {
-    return this.config.MIGRATION_TICKET_ID !== "*";
+  public isAllTicketsMode(): boolean {
+    return this.config.MIGRATION_TICKET_ID.trim() === "*";
   }
 
   /**
-   * Retorna o ID numérico do chamado alvo caso esteja no modo seguro de único chamado.
+   * Indica se a migração está configurada para uma lista explícita de chamados delimitada por vírgula.
    *
-   * @returns Número do ID do chamado ou null se for migração em lote.
+   * @returns true se houver um ou mais IDs numéricos especificados.
+   */
+  public hasExplicitTicketList(): boolean {
+    return !this.isAllTicketsMode();
+  }
+
+  /**
+   * Retorna o array de IDs numéricos dos chamados caso uma lista delimitada tenha sido fornecida.
+   *
+   * @returns Array de IDs numéricos ou array vazio caso esteja configurado como '*'.
+   */
+  public getTargetTicketIds(): number[] {
+    if (this.isAllTicketsMode()) {
+      return [];
+    }
+    return this.config.MIGRATION_TICKET_ID.split(",")
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0)
+      .map((item) => parseInt(item, 10));
+  }
+
+  /**
+   * Mantido para compatibilidade: indica se há lista explícita de IDs configurada.
+   *
+   * @returns true se não for '*', false caso contrário.
+   */
+  public isSingleTicketMode(): boolean {
+    return this.hasExplicitTicketList();
+  }
+
+  /**
+   * Mantido para compatibilidade: retorna o primeiro ID numérico ou null se for '*'.
+   *
+   * @returns Número do ID do primeiro chamado alvo ou null.
    */
   public getTargetTicketId(): number | null {
-    if (this.isSingleTicketMode()) {
-      return parseInt(this.config.MIGRATION_TICKET_ID, 10);
-    }
-    return null;
+    const ids = this.getTargetTicketIds();
+    return ids.length > 0 ? (ids[0] ?? null) : null;
   }
 }

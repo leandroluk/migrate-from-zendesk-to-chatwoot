@@ -13,7 +13,7 @@ O fluxo valida permissões de acesso em ambas as plataformas, sincroniza "aresta
 ## Requirements
 
 - REQ-MIG-001: Configuração de Ambiente (`.env`).
-  Validar variáveis de ambiente via Zod (`ZENDESK_SUBDOMAIN`, `ZENDESK_EMAIL`, `ZENDESK_API_TOKEN`, `CHATWOOT_BASE_URL`, `CHATWOOT_API_TOKEN`, `CHATWOOT_ACCOUNT_ID`, `CHATWOOT_INBOX_ID`, `MIGRATION_TICKET_ID`, `MIGRATION_DRY_RUN`). O `MIGRATION_TICKET_ID` pode ser um ID numérico específico (modo seguro de teste) ou `*` (ou omitido) para migração em lote.
+  Validar variáveis de ambiente via Zod (`ZENDESK_SUBDOMAIN`, `ZENDESK_EMAIL`, `ZENDESK_API_TOKEN`, `CHATWOOT_BASE_URL`, `CHATWOOT_API_TOKEN`, `CHATWOOT_ACCOUNT_ID`, `CHATWOOT_INBOX_ID`, `MIGRATION_TICKET_ID`, `MIGRATION_DRY_RUN`). O `MIGRATION_TICKET_ID` pode ser um ID numérico único, uma lista delimitada por vírgula (ex: `"123,456,789"`), ou `*` (ou omitido) para migração em lote.
 
 - REQ-MIG-002: Verificador de Autenticação e Permissões (Passo 1 do fluxo).
   Autenticar no Zendesk (`GET /api/v2/users/me.json`) e no Chatwoot (`GET /api/v1/profile` ou `/api/v1/accounts/{account_id}`) e verificar ativamente se as credenciais possuem permissões necessárias (Zendesk: permissão de agente/admin para ler tickets, usuários, tags e gravar tags; Chatwoot: permissão de administrador na conta para consultar/criar contatos, conversas, mensagens, tags e equipes).
@@ -25,11 +25,12 @@ O fluxo valida permissões de acesso em ambas as plataformas, sincroniza "aresta
   - Requisitantes e Agentes -> Sincronizar perfis de contatos/usuários no Chatwoot.
     Se alguma dessas arestas não existir no Chatwoot, criá-la antes de migrar os tickets.
 
-- REQ-MIG-004: Resolução de Alvo e Modo Seguro de Produção (Passo 3 do fluxo).
-  Quando o ID do chamado existir na variável de ambiente (valor específico diferente de `*`):
-  - Consultar o Zendesk (`GET /api/v2/tickets/{id}.json`) para validar a existência exata do chamado.
-  - Se não existir, interromper com mensagem clara de erro no terminal sem afetar nenhum dado.
-  - Garantir que apenas esse chamado pontual seja manipulado (executado uma única vez).
+- REQ-MIG-004: Resolução de Alvo e Lista Delimitada de Chamados (Passo 3 do fluxo).
+  Quando a lista de IDs de chamados existir na variável de ambiente (diferente de `*`):
+  - Interpretar como lista delimitada por vírgula (ex: `123,456,789`) e iterar sobre cada ID.
+  - Para cada ID, consultar o Zendesk (`GET /api/v2/tickets/{id}.json`) para validar a existência exata do chamado.
+  - Se algum não existir, registrar erro/alerta sem interromper os demais válidos.
+  - Processar somente os chamados solicitados na lista informada.
 
 - REQ-MIG-005: Loop de Busca por Tag de Controle (Passo 4 do fluxo).
   Caso o ID específico não esteja definido (ou seja `*`):

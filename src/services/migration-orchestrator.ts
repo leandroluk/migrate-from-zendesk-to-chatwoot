@@ -87,9 +87,9 @@ export class MigrationOrchestrator {
       endTime: new Date(),
     };
 
-    if (this.configService.isSingleTicketMode()) {
-      const targetId = this.configService.getTargetTicketId()!;
-      await this.executeSingleTicketMode(targetId, stats);
+    if (this.configService.hasExplicitTicketList()) {
+      const targetIds = this.configService.getTargetTicketIds();
+      await this.executeExplicitTicketsMode(targetIds, stats);
     } else {
       await this.executeBatchLoopMode(stats);
     }
@@ -99,40 +99,78 @@ export class MigrationOrchestrator {
   }
 
   /**
-   * Executa a migração no modo seguro de produção para um único chamado específico.
+   * Executa a migração para uma lista delimitada de chamados específicos.
    *
    * @spec REQ-MIG-004
-   * @param ticketId ID do chamado no Zendesk.
+   * @param targetIds Lista de IDs de chamados informados via .env.
    * @param stats Estrutura mutável de estatísticas.
    */
-  private async executeSingleTicketMode(
-    ticketId: number,
+  private async executeExplicitTicketsMode(
+    targetIds: number[],
     stats: MigrationSummaryStats,
   ): Promise<void> {
-    this.ui.logInfo(`Modo Seguro ativado: Buscando chamado #${ticketId} no Zendesk...`);
-    stats.total = 1;
+    stats.total = targetIds.length;
 
-    this.ui.startSpinner(`Validando existência do chamado #${ticketId} no Zendesk...`);
-    const ticket = await this.zendeskClient.getTicket(ticketId);
-
-    if (!ticket) {
-      this.ui.failSpinner(`Chamado #${ticketId} NÃO foi localizado no Zendesk!`);
-      this.ui.logError(
-        `Operação interrompida por segurança: O chamado #${ticketId} informado no .env não existe no Zendesk.`,
+    if (targetIds.length === 1) {
+      this.ui.logInfo(`Modo Seguro ativado: Buscando chamado #${targetIds[0]} no Zendesk...`);
+    } else {
+      this.ui.logInfo(
+        `Modo Lista Delimitada ativado: Processando ${targetIds.length} chamados (${targetIds.join(", ")})...`,
       );
-      stats.failed++;
-      return;
     }
 
-    this.ui.succeedSpinner(
-      `Chamado #${ticketId} localizado com sucesso (Assunto: "${ticket.subject}").`,
-    );
+    const useProgressBar = targetIds.length > 1;
+    if (useProgressBar) {
+      this.ui.createProgressBar(targetIds.length, "Processando lista de chamados...");
+    }
 
-    const success = await this.processSingleTicket(ticket);
-    if (success) {
-      stats.success++;
-    } else {
-      stats.failed++;
+    for (let i = 0; i < targetIds.length; i++) {
+      const ticketId = targetIds[i]!;
+
+      if (!useProgressBar) {
+        this.ui.startSpinner(`Validando existência do chamado #${ticketId} no Zendesk...`);
+      }
+
+      const ticket = await this.zendeskClient.getTicket(ticketId);
+
+      if (!ticket) {
+        if (!useProgressBar) {
+          this.ui.failSpinner(`Chamado #${ticketId} NÃO foi localizado no Zendesk!`);
+        }
+        this.ui.logError(
+          `O chamado #${ticketId} informado no .env não existe no Zendesk. Saltando...`,
+        );
+        stats.failed++;
+        if (useProgressBar) {
+          this.ui.updateProgressBar(stats.success + stats.failed, {
+            status: `Ticket #${ticketId} não encontrado`,
+          });
+        }
+        continue;
+      }
+
+      if (!useProgressBar) {
+        this.ui.succeedSpinner(
+          `Chamado #${ticketId} localizado com sucesso (Assunto: "${ticket.subject}").`,
+        );
+      }
+
+      const success = await this.processSingleTicket(ticket);
+      if (success) {
+        stats.success++;
+      } else {
+        stats.failed++;
+      }
+
+      if (useProgressBar) {
+        this.ui.updateProgressBar(stats.success + stats.failed, {
+          status: `Ticket #${ticketId} concluído`,
+        });
+      }
+    }
+
+    if (useProgressBar) {
+      this.ui.stopProgressBar();
     }
   }
 
