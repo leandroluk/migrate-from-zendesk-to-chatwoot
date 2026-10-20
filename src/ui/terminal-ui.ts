@@ -48,7 +48,7 @@ export class TerminalUI {
   public printBanner(): void {
     console.log('\n' + pc.cyan('╔══════════════════════════════════════════════════════════════╗'));
     console.log(
-      pc.cyan('║') + pc.bold(pc.white('   MIGRAÇÃO DE CHAMADOS: ZENDESK  ➜  CHATWOOT (POC)          ')) + pc.cyan('║')
+      pc.cyan('║') + pc.bold(pc.white('   MIGRAÇÃO DE CHAMADOS: ZENDESK  ➜  CHATWOOT (POC)           ')) + pc.cyan('║')
     );
     console.log(pc.cyan('╚══════════════════════════════════════════════════════════════╝\n'));
   }
