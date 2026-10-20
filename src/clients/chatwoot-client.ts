@@ -112,7 +112,25 @@ export class ChatwootClient {
   }
 
   /**
+   * Sanitiza o nome de uma label/tag para atender aos requisitos estritos do Chatwoot:
+   * Apenas letras (a-z, A-Z), números (0-9), hífens (-) e underscores (_) são permitidos.
+   * Caracteres especiais, espaços e pontos (.) são convertidos para underscore.
+   *
+   * @spec REQ-MIG-003
+   * @param title Nome original da tag.
+   * @returns Nome sanitizado compatível com o Chatwoot.
+   */
+  public static sanitizeLabel(title: string): string {
+    return title
+      .trim()
+      .replace(/[^a-zA-Z0-9_-]/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_+|_+$/g, '');
+  }
+
+  /**
    * Cria um novo marcador (label) na conta do Chatwoot.
+   * Sanitiza automaticamente o título para garantir compatibilidade.
    *
    * @spec REQ-MIG-003
    * @param title Nome do marcador a ser criado.
@@ -120,10 +138,15 @@ export class ChatwootClient {
    * @returns Marcador criado.
    */
   public async createLabel(title: string, color: string = '#1f93ff'): Promise<ChatwootLabel> {
+    const sanitizedTitle = ChatwootClient.sanitizeLabel(title);
+    if (!sanitizedTitle) {
+      throw new Error(`[ChatwootClient] O título da label '${title}' é inválido após sanitização.`);
+    }
+
     const data = await this.request<{payload: ChatwootLabel}>(`/accounts/${this.accountId}/labels`, {
       method: 'POST',
       body: JSON.stringify({
-        title,
+        title: sanitizedTitle,
         color,
         show_on_sidebar: true,
       }),
@@ -217,10 +240,11 @@ export class ChatwootClient {
    * @param labels Lista de nomes de marcadores.
    */
   public async addLabelsToConversation(conversationId: number, labels: string[]): Promise<void> {
-    if (labels.length === 0) return;
+    const sanitizedLabels = labels.map(ChatwootClient.sanitizeLabel).filter(Boolean);
+    if (sanitizedLabels.length === 0) return;
     await this.request<{payload: string[]}>(`/accounts/${this.accountId}/conversations/${conversationId}/labels`, {
       method: 'POST',
-      body: JSON.stringify({labels}),
+      body: JSON.stringify({labels: sanitizedLabels}),
     });
   }
 

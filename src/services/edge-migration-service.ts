@@ -1,4 +1,4 @@
-import type {ChatwootClient, ZendeskClient} from '../clients';
+import {ChatwootClient, type ZendeskClient} from '../clients';
 import type {EdgeAssessmentResult, EdgeMigrationResult} from '../types';
 import {TerminalUI} from '../ui';
 
@@ -48,8 +48,18 @@ export class EdgeMigrationService {
     const existingLabelTitles = new Set(cwLabels.map(l => l.title.toLowerCase()));
     const existingTeamNames = new Set(cwTeams.map(t => t.name.toLowerCase()));
 
+    // Sanitiza e deduplica tags do Zendesk para o formato aceito pelo Chatwoot
+    const sanitizedZdTags = zdTags
+      .map(tag => ({
+        ...tag,
+        name: ChatwootClient.sanitizeLabel(tag.name),
+      }))
+      .filter(tag => tag.name.length > 0);
+
+    const uniqueZdTags = Array.from(new Map(sanitizedZdTags.map(tag => [tag.name.toLowerCase(), tag])).values());
+
     // Filtra as arestas ausentes
-    const missingTags = zdTags.filter(tag => !existingLabelTitles.has(tag.name.toLowerCase()));
+    const missingTags = uniqueZdTags.filter(tag => !existingLabelTitles.has(tag.name.toLowerCase()));
     const missingGroups = zdGroups.filter(g => !existingTeamNames.has(g.name.toLowerCase()));
 
     const customRolesInfo =
