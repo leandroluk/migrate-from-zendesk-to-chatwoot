@@ -4,44 +4,118 @@ import {z} from 'zod';
 // Carrega as variáveis do arquivo .env
 dotenv.config();
 
+/**
+ * Validador e normalizador do subdomínio do Zendesk.
+ * Remove prefixos de protocolo (http/https), sufixos de domínio (.zendesk.com)
+ * e garante que contenha apenas caracteres válidos.
+ */
+const zendeskSubdomainSchema = z
+  .string()
+  .trim()
+  .min(1, 'O subdomínio do Zendesk (ZENDESK_SUBDOMAIN) é obrigatório.')
+  .transform(val =>
+    val
+      .replace(/^https?:\/\//i, '')
+      .replace(/\.zendesk\.com.*$/i, '')
+      .replace(/\/+$/, '')
+      .trim()
+  )
+  .pipe(
+    z
+      .string()
+      .regex(
+        /^[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]$/,
+        'O subdomínio do Zendesk deve conter apenas letras, números e hífens (ex: "minhaempresa"). Não informe a URL inteira.'
+      )
+  );
+
+/**
+ * Validador da URL base do Chatwoot com normalização de barras finais.
+ */
+const chatwootBaseUrlSchema = z
+  .string()
+  .trim()
+  .default('https://app.chatwoot.com')
+  .transform(val => val.replace(/\/+$/, ''))
+  .pipe(z.url('A URL base do Chatwoot (CHATWOOT_BASE_URL) deve ser uma URL válida com http:// ou https://.'));
+
+/**
+ * Validador da lista de IDs de chamados (suporta '*' ou lista delimitada por vírgula).
+ */
+const migrationTicketIdSchema = z
+  .string()
+  .default('*')
+  .transform(val => val.trim())
+  .refine(
+    val => {
+      if (val === '*') return true;
+      const parts = val.split(',').map(p => p.trim());
+      return parts.length > 0 && parts.every(p => /^\d+$/.test(p) && Number(p) > 0);
+    },
+    {
+      message:
+        'MIGRATION_TICKET_ID deve ser "*" (migrar todos) ou uma lista de IDs numéricos válidos separados por vírgula (ex: "101" ou "101,102,103").',
+    }
+  );
+
+/**
+ * Validador de booleano flexível (aceita 'true', 'false', '1', '0', etc.).
+ */
+const booleanCoerceSchema = z
+  .preprocess(val => {
+    if (typeof val === 'string') {
+      const lower = val.toLowerCase().trim();
+      return lower === 'true' || lower === '1' || lower === 'yes';
+    }
+    return Boolean(val);
+  }, z.boolean())
+  .default(false);
+
+const supportedLocales = ['pt-BR', 'en-US', 'pt', 'en'] as const;
+
 // @spec REQ-MIG-001
 const envSchema = z.object({
-  ZENDESK_SUBDOMAIN: z.string().min(1, 'O subdomínio do Zendesk é obrigatório.'),
-  ZENDESK_EMAIL: z.string().email('O e-mail do Zendesk deve ser válido.'),
-  ZENDESK_API_TOKEN: z.string().min(1, 'O token de API do Zendesk é obrigatório.'),
+  ZENDESK_SUBDOMAIN: zendeskSubdomainSchema,
+  ZENDESK_EMAIL: z
+    .string()
+    .trim()
+    .min(1, 'O e-mail do Zendesk (ZENDESK_EMAIL) é obrigatório.')
+    .email('O e-mail do Zendesk (ZENDESK_EMAIL) deve ser um endereço de e-mail válido.'),
+  ZENDESK_API_TOKEN: z
+    .string()
+    .trim()
+    .min(6, 'O token de API do Zendesk (ZENDESK_API_TOKEN) deve ter pelo menos 6 caracteres.'),
 
-  CHATWOOT_BASE_URL: z
+  CHATWOOT_BASE_URL: chatwootBaseUrlSchema,
+  CHATWOOT_API_TOKEN: z
     .string()
-    .url('A URL base do Chatwoot deve ser uma URL válida.')
-    .default('https://app.chatwoot.com'),
-  CHATWOOT_API_TOKEN: z.string().min(1, 'O token de acesso do Chatwoot é obrigatório.'),
-  CHATWOOT_ACCOUNT_ID: z.coerce.number().positive('O ID da conta do Chatwoot deve ser um número positivo.'),
-  CHATWOOT_INBOX_ID: z.coerce.number().positive('O ID da caixa de entrada do Chatwoot deve ser positivo.'),
+    .trim()
+    .min(6, 'O token de acesso do Chatwoot (CHATWOOT_API_TOKEN) deve ter pelo menos 6 caracteres.'),
+  CHATWOOT_ACCOUNT_ID: z.coerce
+    .number()
+    .int('O ID da conta do Chatwoot deve ser um número inteiro.')
+    .positive('O ID da conta do Chatwoot deve ser um número positivo maior que zero.'),
+  CHATWOOT_INBOX_ID: z.coerce
+    .number()
+    .int('O ID da caixa de entrada do Chatwoot deve ser um número inteiro.')
+    .positive('O ID da caixa de entrada do Chatwoot deve ser um número positivo maior que zero.'),
 
-  MIGRATION_TICKET_ID: z
-    .string()
-    .default('*')
-    .refine(val => {
-      const trimmed = val.trim();
-      if (trimmed === '*') return true;
-      const parts = trimmed.split(',').map(p => p.trim());
-      return parts.length > 0 && parts.every(p => /^\d+$/.test(p));
-    }, 'MIGRATION_TICKET_ID deve ser "*" ou uma lista de IDs separados por vírgula (ex: "123,456,789").'),
-  MIGRATION_BATCH_SIZE: z.coerce.number().int().positive().default(25),
-  MIGRATION_LOCALE: z.string().default('pt-BR'),
-  MIGRATION_DRY_RUN: z
-    .string()
-    .optional()
-    .transform(val => val === 'true' || val === '1')
-    .pipe(z.boolean())
-    .default(false),
+  MIGRATION_TICKET_ID: migrationTicketIdSchema,
+  MIGRATION_BATCH_SIZE: z.coerce
+    .number()
+    .int('MIGRATION_BATCH_SIZE deve ser um número inteiro.')
+    .min(1, 'MIGRATION_BATCH_SIZE deve ser no mínimo 1.')
+    .max(100, 'MIGRATION_BATCH_SIZE não pode ser maior que 100 devido aos limites da API.')
+    .default(25),
+  MIGRATION_LOCALE: z.enum(supportedLocales).default('pt-BR'),
+  MIGRATION_DRY_RUN: booleanCoerceSchema,
 });
 
 // @spec REQ-MIG-001
 export type AppConfig = z.infer<typeof envSchema>;
 
 /**
- * Serviço responsável pelo carregamento e validação das variáveis de ambiente da aplicação.
+ * Serviço responsável pelo carregamento e validação estrita das variáveis de ambiente via Zod.
  * Implementa o padrão Singleton para garantir uma única fonte da verdade de configuração.
  *
  * @spec REQ-MIG-001
@@ -49,6 +123,7 @@ export type AppConfig = z.infer<typeof envSchema>;
 export class ConfigService {
   private static instance: ConfigService | null = null;
   private readonly config: AppConfig;
+  private readonly parsedTicketIds: number[];
 
   /**
    * Construtor privado para inicialização e validação das configurações via Zod.
@@ -57,11 +132,23 @@ export class ConfigService {
     const result = envSchema.safeParse(process.env);
 
     if (!result.success) {
-      const errorDetails = result.error.issues.map(issue => ` - ${issue.path.join('.')}: ${issue.message}`).join('\n');
-      throw new Error(`[ConfigService] Falha na validação das variáveis de ambiente:\n${errorDetails}`);
+      const errorDetails = result.error.issues.map(issue => ` • ${issue.path.join('.')}: ${issue.message}`).join('\n');
+      throw new Error(
+        `[ConfigService] Configurações inválidas ou incompletas no arquivo .env:\n${errorDetails}\n\nConsulte o arquivo README.md para obter instruções detalhadas de cada variável.`
+      );
     }
 
     this.config = result.data;
+
+    // Pré-computa os IDs caso não seja '*'
+    if (this.config.MIGRATION_TICKET_ID === '*') {
+      this.parsedTicketIds = [];
+    } else {
+      this.parsedTicketIds = this.config.MIGRATION_TICKET_ID.split(',')
+        .map(item => item.trim())
+        .filter(item => item.length > 0)
+        .map(item => parseInt(item, 10));
+    }
   }
 
   /**
@@ -91,7 +178,7 @@ export class ConfigService {
    * @returns true se MIGRATION_TICKET_ID for '*'; false se houver lista delimitada de IDs.
    */
   public isAllTicketsMode(): boolean {
-    return this.config.MIGRATION_TICKET_ID.trim() === '*';
+    return this.config.MIGRATION_TICKET_ID === '*';
   }
 
   /**
@@ -109,13 +196,7 @@ export class ConfigService {
    * @returns Array de IDs numéricos ou array vazio caso esteja configurado como '*'.
    */
   public getTargetTicketIds(): number[] {
-    if (this.isAllTicketsMode()) {
-      return [];
-    }
-    return this.config.MIGRATION_TICKET_ID.split(',')
-      .map(item => item.trim())
-      .filter(item => item.length > 0)
-      .map(item => parseInt(item, 10));
+    return this.parsedTicketIds;
   }
 
   /**
@@ -133,7 +214,6 @@ export class ConfigService {
    * @returns Número do ID do primeiro chamado alvo ou null.
    */
   public getTargetTicketId(): number | null {
-    const ids = this.getTargetTicketIds();
-    return ids.length > 0 ? (ids[0] ?? null) : null;
+    return this.parsedTicketIds.length > 0 ? (this.parsedTicketIds[0] ?? null) : null;
   }
 }
