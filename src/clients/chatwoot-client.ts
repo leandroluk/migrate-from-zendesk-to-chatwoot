@@ -1,4 +1,4 @@
-import type { AppConfig } from "../config/env.js";
+import type { AppConfig } from "../config";
 import type {
   ChatwootContact,
   ChatwootConversation,
@@ -8,7 +8,7 @@ import type {
   CreateContactDTO,
   CreateConversationDTO,
   CreateMessageDTO,
-} from "../types/chatwoot.js";
+} from "../types";
 
 /**
  * Cliente HTTP orientado a objetos para interação com a API de Aplicação do Chatwoot.

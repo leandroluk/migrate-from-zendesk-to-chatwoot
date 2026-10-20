@@ -1,4 +1,4 @@
-import type { ZendeskGroup, ZendeskTag } from "./zendesk.js";
+import type { ZendeskGroup, ZendeskTag } from "./zendesk";
 
 /**
  * Resultado do levantamento de arestas pré-requisito (Passo 2).

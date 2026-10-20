@@ -1,12 +1,10 @@
-import { ChatwootClient } from "../clients/chatwoot-client.js";
-import { ZendeskClient } from "../clients/zendesk-client.js";
-import { ConfigService } from "../config/env.js";
-import { TicketMapper } from "../mappers/ticket-mapper.js";
-import type { ZendeskTicket } from "../types/zendesk.js";
-import type { MigrationSummaryStats } from "../ui/terminal-ui.js";
-import { TerminalUI } from "../ui/terminal-ui.js";
-import { EdgeMigrationService } from "./edge-migration-service.js";
-import { PermissionService } from "./permission-service.js";
+import { ChatwootClient, ZendeskClient } from "../clients";
+import { ConfigService } from "../config";
+import { TicketMapper } from "../mappers";
+import type { ZendeskTicket } from "../types";
+import { TerminalUI, type MigrationSummaryStats } from "../ui";
+import { EdgeMigrationService } from "./edge-migration-service";
+import { PermissionService } from "./permission-service";
 
 /**
  * Orquestrador principal da migração de chamados do Zendesk para o Chatwoot.

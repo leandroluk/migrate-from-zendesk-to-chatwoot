@@ -1,5 +1,5 @@
-import { MigrationOrchestrator } from "./services/migration-orchestrator.js";
-import { TerminalUI } from "./ui/terminal-ui.js";
+import { MigrationOrchestrator } from "./services";
+import { TerminalUI } from "./ui";
 
 /**
  * Ponto de entrada principal da aplicação de migração Zendesk -> Chatwoot.

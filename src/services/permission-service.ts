@@ -1,7 +1,6 @@
-import type { ChatwootClient } from "../clients/chatwoot-client.js";
-import type { ZendeskClient } from "../clients/zendesk-client.js";
-import type { PermissionValidationResult } from "../types/migration.js";
-import { TerminalUI } from "../ui/terminal-ui.js";
+import type { ChatwootClient, ZendeskClient } from "../clients";
+import type { PermissionValidationResult } from "../types";
+import { TerminalUI } from "../ui";
 
 /**
  * Serviço responsável por executar o Passo 1 do fluxo:

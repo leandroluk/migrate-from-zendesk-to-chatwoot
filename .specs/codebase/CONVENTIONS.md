@@ -3,10 +3,12 @@
 ## Code Style
 
 - Use ESM modules (`import` / `export`).
-- TypeScript strict mode enabled.
+- Extensionless imports: Nunca utilizar `.js` no final dos imports de arquivos locais.
+- Barrel files: Cada diretório (`clients`, `types`, `services`, `mappers`, `config`, `ui`) deve conter um `index.ts` reexportando suas entidades para permitir imports limpos.
+- TypeScript strict mode enabled com `"moduleResolution": "bundler"`.
 - Formatting handled by `oxfmt`.
 - Linting handled by `oxlint`.
-- File naming: kebab-case for files (`zendesk-client.ts`, `migration-engine.ts`).
+- File naming: kebab-case for files (`zendesk-client.ts`, `migration-orchestrator.ts`).
 - Types/Classes: PascalCase (`ZendeskTicket`, `ChatwootConversation`).
 - Functions/variables: camelCase (`migrateTicket`, `fetchComments`).
 

@@ -1,4 +1,4 @@
-import type { AppConfig } from "../config/env.js";
+import type { AppConfig } from "../config";
 import type {
   ZendeskComment,
   ZendeskGroup,
@@ -6,7 +6,7 @@ import type {
   ZendeskTag,
   ZendeskTicket,
   ZendeskUser,
-} from "../types/zendesk.js";
+} from "../types";
 
 /**
  * Cliente HTTP orientado a objetos para interação com a API REST v2 do Zendesk.

@@ -1,5 +1,4 @@
-import type { CreateMessageDTO } from "../types/chatwoot.js";
-import type { ZendeskComment, ZendeskTicket, ZendeskUser } from "../types/zendesk.js";
+import type { CreateMessageDTO, ZendeskComment, ZendeskTicket, ZendeskUser } from "../types";
 
 /**
  * Classe utilitária responsável por mapear e transformar entidades do Zendesk
