@@ -4,7 +4,7 @@ import {z} from 'zod';
 dotenv.config();
 
 // @spec REQ-MIG-001
-const appConfig = z.object({
+export const envSchema = z.object({
   ZENDESK_BASE_URL: z.url(),
   ZENDESK_EMAIL: z.email(),
   ZENDESK_API_TOKEN: z.string().min(1),
@@ -21,46 +21,19 @@ const appConfig = z.object({
 });
 
 // @spec REQ-MIG-001
-export type AppConfig = z.infer<typeof appConfig>;
+export type AppConfig = z.infer<typeof envSchema>;
 
 /**
- * Serviço responsável pelo carregamento e validação das variáveis de ambiente via Zod.
+ * Serviço de configuração que valida e entrega as variáveis de ambiente validadas pelo Zod.
  *
  * @spec REQ-MIG-001
  */
 export class ConfigService {
   private static instance: ConfigService | null = null;
   private readonly config: AppConfig;
-  private readonly parsedTicketIds: number[];
 
   private constructor() {
-    // Suporta ZENDESK_BASE_URL diretamente ou retrocompatibilidade com ZENDESK_SUBDOMAIN
-    const envSource = {
-      ...process.env,
-      ZENDESK_BASE_URL:
-        process.env.ZENDESK_BASE_URL ||
-        (process.env.ZENDESK_SUBDOMAIN
-          ? `https://${process.env.ZENDESK_SUBDOMAIN.replace(/^https?:\/\//i, '').replace(/\.zendesk\.com.*$/i, '')}.zendesk.com`
-          : undefined),
-    };
-
-    const result = appConfig.safeParse(envSource);
-
-    if (!result.success) {
-      const errorDetails = result.error.issues.map(issue => ` • ${issue.path.join('.')}: ${issue.message}`).join('\n');
-      throw new Error(`[ConfigService] Invalid environment configuration:\n${errorDetails}`);
-    }
-
-    this.config = result.data;
-
-    if (this.config.MIGRATION_TICKET_ID === '*') {
-      this.parsedTicketIds = [];
-    } else {
-      this.parsedTicketIds = this.config.MIGRATION_TICKET_ID.split(',')
-        .map(item => item.trim())
-        .filter(item => item.length > 0)
-        .map(item => parseInt(item, 10));
-    }
+    this.config = envSchema.parse(process.env);
   }
 
   public static getInstance(): ConfigService {
@@ -83,14 +56,9 @@ export class ConfigService {
   }
 
   public getTargetTicketIds(): number[] {
-    return this.parsedTicketIds;
-  }
-
-  public isSingleTicketMode(): boolean {
-    return this.hasExplicitTicketList();
-  }
-
-  public getTargetTicketId(): number | null {
-    return this.parsedTicketIds.length > 0 ? (this.parsedTicketIds[0] ?? null) : null;
+    if (this.config.MIGRATION_TICKET_ID === '*') return [];
+    return this.config.MIGRATION_TICKET_ID.split(',')
+      .map(id => parseInt(id.trim(), 10))
+      .filter(Boolean);
   }
 }

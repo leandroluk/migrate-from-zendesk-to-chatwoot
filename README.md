@@ -26,11 +26,11 @@ Abaixo está o passo a passo detalhado de onde encontrar cada uma das credenciai
 
 ### 1. Variáveis do Zendesk
 
-| Variável            | Exemplo                                 | Como Obter no Zendesk                                                                                   |
-| ------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `ZENDESK_BASE_URL`  | `https://minhaempresa.zendesk.com`      | A URL completa de acesso ao seu Zendesk (incluindo `https://`).                                         |
-| `ZENDESK_EMAIL`     | `admin@empresa.com`                     | O endereço de e-mail do usuário com papel de **Administrador** ou **Agente** que gerou o token de API. |
-| `ZENDESK_API_TOKEN` | `a1b2c3d4...`                           | Token gerado no Centro de Administração do Zendesk (instruções abaixo).                                 |
+| Variável            | Exemplo                            | Como Obter no Zendesk                                                                                  |
+| ------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `ZENDESK_BASE_URL`  | `https://minhaempresa.zendesk.com` | A URL completa de acesso ao seu Zendesk (incluindo `https://`).                                        |
+| `ZENDESK_EMAIL`     | `admin@empresa.com`                | O endereço de e-mail do usuário com papel de **Administrador** ou **Agente** que gerou o token de API. |
+| `ZENDESK_API_TOKEN` | `a1b2c3d4...`                      | Token gerado no Centro de Administração do Zendesk (instruções abaixo).                                |
 
 #### 🛠️ Como Gerar o `ZENDESK_API_TOKEN`:
 
