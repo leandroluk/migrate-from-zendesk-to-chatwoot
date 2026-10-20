@@ -1,5 +1,6 @@
 import { ChatwootClient, ZendeskClient } from "../clients";
 import { ConfigService } from "../config";
+import { DictionaryService } from "../dictionaries";
 import { TicketMapper } from "../mappers";
 import type { ZendeskTicket } from "../types";
 import { TerminalUI, type MigrationSummaryStats } from "../ui";
@@ -27,6 +28,7 @@ export class MigrationOrchestrator {
   private readonly chatwootClient: ChatwootClient;
   private readonly permissionService: PermissionService;
   private readonly edgeMigrationService: EdgeMigrationService;
+  private readonly dictionaryService: DictionaryService;
   private readonly ui: TerminalUI;
 
   /**
@@ -36,6 +38,7 @@ export class MigrationOrchestrator {
     this.configService = ConfigService.getInstance();
     const config = this.configService.get();
 
+    this.dictionaryService = DictionaryService.getInstance(config.MIGRATION_LOCALE);
     this.zendeskClient = new ZendeskClient(config);
     this.chatwootClient = new ChatwootClient(config);
     this.permissionService = new PermissionService(this.zendeskClient, this.chatwootClient);
@@ -268,11 +271,12 @@ export class MigrationOrchestrator {
       }
 
       // 3. Localizar ou cadastrar o contato no Chatwoot
+      const defaultClientName = this.dictionaryService.get().roles.defaultClientName;
       let contact = await this.chatwootClient.findContactByEmail(requester.email);
       if (!contact) {
         contact = await this.chatwootClient.createContact({
           inbox_id: this.chatwootClient.getInboxId(),
-          name: requester.name || requester.email.split("@")[0] || "Cliente",
+          name: requester.name || requester.email.split("@")[0] || defaultClientName,
           email: requester.email,
         });
       }
@@ -308,7 +312,10 @@ export class MigrationOrchestrator {
       // 7. Replay cronológico de comentários e anexos
       for (const comment of comments) {
         const author = await this.zendeskClient.getUser(comment.author_id);
-        const messageDto = TicketMapper.toChatwootMessageDTO(comment, author);
+        const roleName = await this.zendeskClient.resolveUserRoleName(author, (r) =>
+          this.dictionaryService.getRoleLabel(r),
+        );
+        const messageDto = TicketMapper.toChatwootMessageDTO(comment, author, roleName);
         await this.chatwootClient.createMessage(conversation.id, messageDto);
       }
 

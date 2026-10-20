@@ -32,6 +32,7 @@ const envSchema = z.object({
       return parts.length > 0 && parts.every((p) => /^\d+$/.test(p));
     }, 'MIGRATION_TICKET_ID deve ser "*" ou uma lista de IDs separados por vírgula (ex: "123,456,789").'),
   MIGRATION_BATCH_SIZE: z.coerce.number().int().positive().default(25),
+  MIGRATION_LOCALE: z.string().default("pt-BR"),
   MIGRATION_DRY_RUN: z
     .string()
     .optional()

@@ -1,6 +1,7 @@
 import type { AppConfig } from "../config";
 import type {
   ZendeskComment,
+  ZendeskCustomRole,
   ZendeskGroup,
   ZendeskSearchResponse,
   ZendeskTag,
@@ -22,6 +23,7 @@ export class ZendeskClient {
   private readonly baseUrl: string;
   private readonly authHeader: string;
   private readonly userCache: Map<number, ZendeskUser> = new Map();
+  private readonly customRolesCache: Map<number, string> = new Map();
 
   /**
    * Inicializa o cliente do Zendesk com base nas configurações da aplicação.
@@ -207,5 +209,54 @@ export class ZendeskClient {
       method: "PUT",
       body: JSON.stringify({ tags: [tag] }),
     });
+  }
+
+  /**
+   * Obtém a lista de papéis personalizados (Custom Roles) configurados no Zendesk.
+   * Em planos que não suportam custom roles (não-Enterprise), retorna array vazio com segurança.
+   *
+   * @spec REQ-MIG-003
+   * @returns Lista de Custom Roles do Zendesk.
+   */
+  public async listCustomRoles(): Promise<ZendeskCustomRole[]> {
+    try {
+      const data = await this.request<{ custom_roles: ZendeskCustomRole[] }>("/custom_roles.json");
+      const roles = data.custom_roles ?? [];
+      roles.forEach((r) => this.customRolesCache.set(r.id, r.name));
+      return roles;
+    } catch {
+      // Planos sem suporte a custom roles ou falta de permissão retornam vazio
+      return [];
+    }
+  }
+
+  /**
+   * Resolve dinamicamente o nome do papel do usuário através da API do Zendesk,
+   * buscando o nome real caso o usuário possua um custom_role_id cadastrado.
+   *
+   * @spec REQ-MIG-006
+   * @param user Objeto do usuário no Zendesk.
+   * @param fallbackFn Função opcional de fallback para papéis nativos.
+   * @returns Nome do papel resolvido (ex: "Suporte N2", "Administrador", etc.).
+   */
+  public async resolveUserRoleName(
+    user: ZendeskUser,
+    fallbackFn?: (role: string) => string,
+  ): Promise<string> {
+    if (user.custom_role_id) {
+      if (this.customRolesCache.size === 0) {
+        await this.listCustomRoles();
+      }
+      const customName = this.customRolesCache.get(user.custom_role_id);
+      if (customName) {
+        return customName;
+      }
+    }
+
+    if (fallbackFn) {
+      return fallbackFn(user.role);
+    }
+
+    return user.role.charAt(0).toUpperCase() + user.role.slice(1);
   }
 }

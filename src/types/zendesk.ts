@@ -28,6 +28,13 @@ export interface ZendeskComment {
   attachments?: ZendeskAttachment[];
 }
 
+export interface ZendeskCustomRole {
+  id: number;
+  name: string;
+  description?: string;
+  role_type?: number;
+}
+
 /**
  * Representa um usuário (requisitante ou agente) no Zendesk.
  *
@@ -39,6 +46,7 @@ export interface ZendeskUser {
   name: string;
   email: string;
   role: "end-user" | "agent" | "admin";
+  custom_role_id?: number | null;
   active: boolean;
   verified?: boolean;
 }

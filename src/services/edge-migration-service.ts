@@ -37,10 +37,11 @@ export class EdgeMigrationService {
       "Mensurando arestas pré-requisito (tags e grupos) no Zendesk e Chatwoot...",
     );
 
-    // 1. Obter tags e grupos do Zendesk
-    const [zdTags, zdGroups] = await Promise.all([
+    // 1. Obter tags, grupos e papéis personalizados do Zendesk
+    const [zdTags, zdGroups, zdCustomRoles] = await Promise.all([
       this.zendeskClient.listTags(),
       this.zendeskClient.listGroups(),
+      this.zendeskClient.listCustomRoles(),
     ]);
 
     // 2. Obter labels e teams do Chatwoot
@@ -56,9 +57,14 @@ export class EdgeMigrationService {
     const missingTags = zdTags.filter((tag) => !existingLabelTitles.has(tag.name.toLowerCase()));
     const missingGroups = zdGroups.filter((g) => !existingTeamNames.has(g.name.toLowerCase()));
 
+    const customRolesInfo =
+      zdCustomRoles.length > 0
+        ? `, ${zdCustomRoles.length} papéis personalizados identificados.`
+        : ".";
+
     this.ui.succeedSpinner(
       `Arestas mensuradas: ${zdTags.length} tags (${missingTags.length} ausentes no Chatwoot), ` +
-        `${zdGroups.length} grupos (${missingGroups.length} ausentes no Chatwoot).`,
+        `${zdGroups.length} grupos (${missingGroups.length} ausentes no Chatwoot)${customRolesInfo}`,
     );
 
     return {

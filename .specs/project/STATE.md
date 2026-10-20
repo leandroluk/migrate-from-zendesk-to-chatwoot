@@ -19,6 +19,7 @@ Arquitetura da POC implementada com sucesso em TypeScript, POO, oxlint, oxfmt e 
 
 ## Recent Decisions (Last 15)
 
+- [2026-10-20] Implementado DictionaryService com MIGRATION_LOCALE no .env (suporte a pt-BR, en-US) e integração dinâmica com a Custom Roles API do Zendesk para resolução real de papéis.
 - [2026-10-20] Suporte a lista delimitada por vírgula em MIGRATION_TICKET_ID (ex: "123,456,789") permitindo loop sobre lista arbitrária de chamados ou lote total com "*".
 - [2026-10-20] Atualizado tsconfig.json com moduleResolution "bundler", eliminadas extensões .js nos imports e adotado padrão de barrels (index.ts) em todos os módulos.
 - [2026-10-20] Concluída implementação completa dos 8 componentes da POC de migração.

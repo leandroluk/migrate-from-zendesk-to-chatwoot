@@ -1,4 +1,5 @@
 import type { AppConfig } from "../config";
+import { DictionaryService } from "../dictionaries";
 import type {
   ChatwootContact,
   ChatwootConversation,
@@ -157,11 +158,12 @@ export class ChatwootClient {
    * @returns Equipe criada.
    */
   public async createTeam(name: string, description?: string): Promise<ChatwootTeam> {
+    const dict = DictionaryService.getInstance().get();
     return await this.request<ChatwootTeam>(`/accounts/${this.accountId}/teams`, {
       method: "POST",
       body: JSON.stringify({
         name,
-        description: description ?? `Equipe migrada do grupo Zendesk: ${name}`,
+        description: description ?? dict.teams.defaultDescription(name),
         allow_auto_assign: true,
       }),
     });
