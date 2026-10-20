@@ -4,3 +4,5 @@ dist/
 .env.local
 .specs/.index/
 *.log
+.specs/.cache/
+.specs/.memory/notes/

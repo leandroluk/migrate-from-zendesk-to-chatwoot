@@ -16,6 +16,7 @@ pnpm run format:check
 ```
 
 ## Running the POC
+
 ```bash
 # Run in development mode
 pnpm run dev

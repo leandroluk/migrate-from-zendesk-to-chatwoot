@@ -3,9 +3,11 @@
 Traceability: on
 
 ## Overview
+
 POC (Proof of Concept) tool to migrate tickets, conversation threads, contacts, and metadata from Zendesk to Chatwoot.
 
 ## Objectives
+
 - Extract tickets and conversation history from Zendesk REST API.
 - Filter and target migrations by a specific ticket ID or batch migrate all tickets (`*`).
 - Reconcile or create contacts in Chatwoot matching Zendesk requesters.
@@ -14,6 +16,7 @@ POC (Proof of Concept) tool to migrate tickets, conversation threads, contacts, 
 - Provide clear logging, error resilience, and dry-run capability.
 
 ## Tech Stack
+
 - TypeScript + Node.js (ESNext / NodeNext)
 - Fast toolchain: oxlint (linter) and oxfmt (formatter)
 - Config & validation: dotenv + zod

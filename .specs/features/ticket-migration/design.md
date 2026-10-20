@@ -36,22 +36,23 @@ flowchart TD
     CLI --> ConfigService
     CLI --> TerminalUI
     CLI --> Orchestrator
-    
+
     Orchestrator --> PermService
     Orchestrator --> EdgeService
     Orchestrator --> ZDClient
     Orchestrator --> CWClient
     Orchestrator --> Mapper
     Orchestrator --> TerminalUI
-    
+
     PermService --> ZDClient
     PermService --> CWClient
-    
+
     EdgeService --> ZDClient
     EdgeService --> CWClient
 ```
 
 ## Dependency Paths (from nexspec)
+
 - `REQ-MIG-001` → `ConfigService` (`src/config/env.ts`)
 - `REQ-MIG-002` → `PermissionService` (`src/services/permission-service.ts`)
 - `REQ-MIG-003` → `EdgeMigrationService` (`src/services/edge-migration-service.ts`)
@@ -65,6 +66,7 @@ flowchart TD
 ## Classes e Responsabilidades
 
 ### 1. `TerminalUI` (`src/ui/terminal-ui.ts`)
+
 - **Responsabilidade**: Gerencia a renderização de elementos interativos no terminal.
 - **Métodos**:
   - `startSpinner(message: string): void`
@@ -79,6 +81,7 @@ flowchart TD
   - `logError(message: string, error?: unknown): void`
 
 ### 2. `ConfigService` (`src/config/env.ts`)
+
 - **Responsabilidade**: Carrega variáveis do arquivo `.env` e valida com esquema Zod tipado.
 - **Métodos**:
   - `static getInstance(): ConfigService`
@@ -87,6 +90,7 @@ flowchart TD
   - `getTargetTicketId(): number | null`
 
 ### 3. `ZendeskClient` (`src/clients/zendesk-client.ts`)
+
 - **Responsabilidade**: Encapsula chamadas HTTP à API v2 do Zendesk.
 - **Métodos**:
   - `getCurrentUser(): Promise<ZendeskUser>`
@@ -100,6 +104,7 @@ flowchart TD
   - `addTagToTicket(ticketId: number, tag: string): Promise<void>`
 
 ### 4. `ChatwootClient` (`src/clients/chatwoot-client.ts`)
+
 - **Responsabilidade**: Encapsula chamadas HTTP à API de aplicação do Chatwoot.
 - **Métodos**:
   - `verifyAdminAccess(): Promise<boolean>`
@@ -114,17 +119,20 @@ flowchart TD
   - `toggleStatus(conversationId: number, status: string): Promise<void>`
 
 ### 5. `PermissionService` (`src/services/permission-service.ts`)
+
 - **Responsabilidade**: Executa o Passo 1 do fluxo.
 - **Métodos**:
   - `validatePermissions(): Promise<PermissionValidationResult>`
 
 ### 6. `EdgeMigrationService` (`src/services/edge-migration-service.ts`)
+
 - **Responsabilidade**: Executa o Passo 2 do fluxo (mensuração e sincronização de arestas: tags, grupos).
 - **Métodos**:
   - `assessEdges(): Promise<EdgeAssessmentResult>`
   - `migrateEdges(assessment: EdgeAssessmentResult): Promise<EdgeMigrationResult>`
 
 ### 7. `TicketMapper` (`src/mappers/ticket-mapper.ts`)
+
 - **Responsabilidade**: Converte entidades do Zendesk para o formato esperado pelo Chatwoot.
 - **Métodos**:
   - `mapStatus(zendeskStatus: string): 'open' | 'pending' | 'resolved'`
@@ -132,6 +140,7 @@ flowchart TD
   - `extractAttachmentSummary(comment: ZendeskComment): string`
 
 ### 8. `MigrationOrchestrator` (`src/services/migration-orchestrator.ts`)
+
 - **Responsabilidade**: Coordena todo o fluxo (Passos 1 a 5).
 - **Métodos**:
   - `run(): Promise<void>`
@@ -140,6 +149,7 @@ flowchart TD
   - `private processTicket(ticket: ZendeskTicket): Promise<boolean>`
 
 ## Decision Log
+
 - [2026-10-20] Adoção de POO estrita em TypeScript com JSDocs em português para facilitar manutenção e entendimento da equipe.
 - [2026-10-20] Uso conjunto de `ora` para operações pontuais (autenticação e arestas) e `cli-progress` para a barra contínua de migração de tickets.
 - [2026-10-20] Validação de existência do chamado antes de qualquer escrita no modo seguro de produção.

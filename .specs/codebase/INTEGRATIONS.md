@@ -1,6 +1,7 @@
 # Integrations
 
 ## Zendesk API
+
 - Base URL format: `https://{subdomain}.zendesk.com/api/v2`
 - Authentication: Basic auth with `{email}/token:{api_token}` encoded in base64.
 - Endpoints used:
@@ -10,6 +11,7 @@
   - `GET /api/v2/users/{id}.json`: Fetch user/requester profile (name, email)
 
 ## Chatwoot API
+
 - Base URL format: `{CHATWOOT_BASE_URL}/api/v1`
 - Authentication: Header `api_access_token: {token}`
 - Endpoints used:

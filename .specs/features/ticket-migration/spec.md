@@ -1,14 +1,17 @@
 # Spec: Zendesk to Chatwoot Ticket Migration POC
 
 ## Summary
+
 POC (Proof of Concept) em TypeScript orientada a objetos (POO) com JSDocs detalhados em português para migrar chamados do Zendesk para o Chatwoot.
 O fluxo valida permissões de acesso em ambas as plataformas, sincroniza "arestas" prévias (tags/rótulos, grupos/equipes e contatos/agentes), oferece modo seguro para validação em produção através de ID único configurado via `.env`, ou executa migração contínua em lote buscando chamados sem a tag `chatwoot` até zerar a fila, com suporte a anexos, marcação de tag no Zendesk e exibição visual de progresso via terminal UI.
 
 ## Referências Oficiais de API
+
 - Chatwoot APIs: https://developers.chatwoot.com/contributing-guide/chatwoot-apis
 - Zendesk API Reference: https://developer.zendesk.com/api-reference/
 
 ## Requirements
+
 - REQ-MIG-001: Configuração de Ambiente (`.env`).
   Validar variáveis de ambiente via Zod (`ZENDESK_SUBDOMAIN`, `ZENDESK_EMAIL`, `ZENDESK_API_TOKEN`, `CHATWOOT_BASE_URL`, `CHATWOOT_API_TOKEN`, `CHATWOOT_ACCOUNT_ID`, `CHATWOOT_INBOX_ID`, `MIGRATION_TICKET_ID`, `MIGRATION_DRY_RUN`). O `MIGRATION_TICKET_ID` pode ser um ID numérico específico (modo seguro de teste) ou `*` (ou omitido) para migração em lote.
 
@@ -20,7 +23,7 @@ O fluxo valida permissões de acesso em ambas as plataformas, sincroniza "aresta
   - Tags do Zendesk (`GET /api/v2/tags.json`) -> Criar Labels equivalentes no Chatwoot (`POST /api/v1/accounts/{id}/labels`).
   - Grupos do Zendesk (`GET /api/v2/groups.json`) -> Criar/Mapear Teams (equipes) no Chatwoot (`POST /api/v1/accounts/{id}/teams`).
   - Requisitantes e Agentes -> Sincronizar perfis de contatos/usuários no Chatwoot.
-  Se alguma dessas arestas não existir no Chatwoot, criá-la antes de migrar os tickets.
+    Se alguma dessas arestas não existir no Chatwoot, criá-la antes de migrar os tickets.
 
 - REQ-MIG-004: Resolução de Alvo e Modo Seguro de Produção (Passo 3 do fluxo).
   Quando o ID do chamado existir na variável de ambiente (valor específico diferente de `*`):
@@ -56,6 +59,7 @@ O fluxo valida permissões de acesso em ambas as plataformas, sincroniza "aresta
   O código deve ser estritamente estruturado em classes orientadas a objetos com separação clara de responsabilidades (clients, services, mappers, UI, validators) e conter JSDocs explicativos em português brasileiro em todas as classes, métodos e interfaces.
 
 ## Affected Components (from graph)
+
 - `src/config/env.ts` — Validação e parsing de variáveis de ambiente [REQ-MIG-001]
 - `src/ui/terminal-ui.ts` — Renderizador de interface do terminal (spinners, progress bar, alerts) [REQ-MIG-008]
 - `src/clients/zendesk-client.ts` — Cliente HTTP Zendesk para tickets, comentários, tags, grupos, permissões [REQ-MIG-002, REQ-MIG-003, REQ-MIG-004, REQ-MIG-005, REQ-MIG-007]
@@ -67,5 +71,6 @@ O fluxo valida permissões de acesso em ambas as plataformas, sincroniza "aresta
 - `src/index.ts` — Ponto de entrada CLI e inicialização dos serviços [REQ-MIG-009]
 
 ## Out of Scope
+
 - Sincronização retroativa de alterações feitas no Zendesk pós-migração.
 - Migração de base de conhecimento / FAQ do Zendesk Guide.
