@@ -31,7 +31,8 @@ export class ZendeskClient {
    * @param config Objeto com configurações de subdomínio, e-mail e token.
    */
   public constructor(config: AppConfig) {
-    this.baseUrl = `https://${config.ZENDESK_SUBDOMAIN}.zendesk.com/api/v2`;
+    const rawUrl = config.ZENDESK_BASE_URL.replace(/\/+$/, '');
+    this.baseUrl = rawUrl.endsWith('/api/v2') ? rawUrl : `${rawUrl}/api/v2`;
     const credentials = Buffer.from(`${config.ZENDESK_EMAIL}/token:${config.ZENDESK_API_TOKEN}`).toString('base64');
     this.authHeader = `Basic ${credentials}`;
   }
