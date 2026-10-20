@@ -1,5 +1,5 @@
-import type { AppConfig } from "../config";
-import { DictionaryService } from "../dictionaries";
+import type {AppConfig} from '../config';
+import {DictionaryService} from '../dictionaries';
 import type {
   ChatwootContact,
   ChatwootConversation,
@@ -9,7 +9,7 @@ import type {
   CreateContactDTO,
   CreateConversationDTO,
   CreateMessageDTO,
-} from "../types";
+} from '../types';
 
 /**
  * Cliente HTTP orientado a objetos para interação com a API de Aplicação do Chatwoot.
@@ -31,7 +31,7 @@ export class ChatwootClient {
    * @param config Configurações validadas do Chatwoot.
    */
   public constructor(config: AppConfig) {
-    this.baseUrl = `${config.CHATWOOT_BASE_URL.replace(/\/+$/, "")}/api/v1`;
+    this.baseUrl = `${config.CHATWOOT_BASE_URL.replace(/\/+$/, '')}/api/v1`;
     this.apiToken = config.CHATWOOT_API_TOKEN;
     this.accountId = config.CHATWOOT_ACCOUNT_ID;
     this.inboxId = config.CHATWOOT_INBOX_ID;
@@ -49,26 +49,24 @@ export class ChatwootClient {
     const url = `${this.baseUrl}${endpoint}`;
     const headers = {
       api_access_token: this.apiToken,
-      "Content-Type": "application/json",
-      Accept: "application/json",
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
       ...options.headers,
     };
 
-    const response = await fetch(url, { ...options, headers });
+    const response = await fetch(url, {...options, headers});
 
     if (response.status === 404) {
       throw new Error(`[ChatwootClient] Recurso não encontrado (404) em ${endpoint}`);
     }
 
     if (response.status === 429) {
-      throw new Error("[ChatwootClient] Taxa de requisições excedida (429) no Chatwoot.");
+      throw new Error('[ChatwootClient] Taxa de requisições excedida (429) no Chatwoot.');
     }
 
     if (!response.ok) {
       const errorBody = await response.text();
-      throw new Error(
-        `[ChatwootClient] Erro HTTP ${response.status} ao acessar ${endpoint}: ${errorBody}`,
-      );
+      throw new Error(`[ChatwootClient] Erro HTTP ${response.status} ao acessar ${endpoint}: ${errorBody}`);
     }
 
     return (await response.json()) as T;
@@ -80,20 +78,20 @@ export class ChatwootClient {
    * @spec REQ-MIG-002
    * @returns Resultado com indicador de validade, papel e e-mail do usuário.
    */
-  public async verifyAdminAccess(): Promise<{ valid: boolean; email?: string; role?: string }> {
+  public async verifyAdminAccess(): Promise<{valid: boolean; email?: string; role?: string}> {
     try {
       const profile = await this.request<{
         email: string;
-        accounts?: Array<{ id: number; role: string }>;
-      }>("/profile");
+        accounts?: Array<{id: number; role: string}>;
+      }>('/profile');
 
-      const currentAccount = profile.accounts?.find((acc) => acc.id === this.accountId);
-      const isAdmin = currentAccount?.role === "administrator";
+      const currentAccount = profile.accounts?.find(acc => acc.id === this.accountId);
+      const isAdmin = currentAccount?.role === 'administrator';
 
       return {
         valid: isAdmin,
         email: profile.email,
-        role: currentAccount?.role ?? "unknown",
+        role: currentAccount?.role ?? 'unknown',
       };
     } catch {
       return {
@@ -109,9 +107,7 @@ export class ChatwootClient {
    * @returns Lista de marcadores do Chatwoot.
    */
   public async listLabels(): Promise<ChatwootLabel[]> {
-    const data = await this.request<{ payload: ChatwootLabel[] }>(
-      `/accounts/${this.accountId}/labels`,
-    );
+    const data = await this.request<{payload: ChatwootLabel[]}>(`/accounts/${this.accountId}/labels`);
     return data.payload ?? [];
   }
 
@@ -123,18 +119,15 @@ export class ChatwootClient {
    * @param color Cor hexadecimal do marcador (opcional).
    * @returns Marcador criado.
    */
-  public async createLabel(title: string, color: string = "#1f93ff"): Promise<ChatwootLabel> {
-    const data = await this.request<{ payload: ChatwootLabel }>(
-      `/accounts/${this.accountId}/labels`,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          title,
-          color,
-          show_on_sidebar: true,
-        }),
-      },
-    );
+  public async createLabel(title: string, color: string = '#1f93ff'): Promise<ChatwootLabel> {
+    const data = await this.request<{payload: ChatwootLabel}>(`/accounts/${this.accountId}/labels`, {
+      method: 'POST',
+      body: JSON.stringify({
+        title,
+        color,
+        show_on_sidebar: true,
+      }),
+    });
     return data.payload;
   }
 
@@ -160,7 +153,7 @@ export class ChatwootClient {
   public async createTeam(name: string, description?: string): Promise<ChatwootTeam> {
     const dict = DictionaryService.getInstance().get();
     return await this.request<ChatwootTeam>(`/accounts/${this.accountId}/teams`, {
-      method: "POST",
+      method: 'POST',
       body: JSON.stringify({
         name,
         description: description ?? dict.teams.defaultDescription(name),
@@ -178,10 +171,10 @@ export class ChatwootClient {
    */
   public async findContactByEmail(email: string): Promise<ChatwootContact | null> {
     const endpoint = `/accounts/${this.accountId}/contacts/search?q=${encodeURIComponent(email)}`;
-    const data = await this.request<{ payload: ChatwootContact[] }>(endpoint);
+    const data = await this.request<{payload: ChatwootContact[]}>(endpoint);
 
     if (data.payload && data.payload.length > 0) {
-      const exactMatch = data.payload.find((c) => c.email.toLowerCase() === email.toLowerCase());
+      const exactMatch = data.payload.find(c => c.email.toLowerCase() === email.toLowerCase());
       return exactMatch ?? data.payload[0] ?? null;
     }
     return null;
@@ -195,13 +188,10 @@ export class ChatwootClient {
    * @returns Contato recém-criado.
    */
   public async createContact(dto: CreateContactDTO): Promise<ChatwootContact> {
-    const data = await this.request<{ payload: { contact: ChatwootContact } }>(
-      `/accounts/${this.accountId}/contacts`,
-      {
-        method: "POST",
-        body: JSON.stringify(dto),
-      },
-    );
+    const data = await this.request<{payload: {contact: ChatwootContact}}>(`/accounts/${this.accountId}/contacts`, {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    });
     return data.payload.contact;
   }
 
@@ -214,7 +204,7 @@ export class ChatwootClient {
    */
   public async createConversation(dto: CreateConversationDTO): Promise<ChatwootConversation> {
     return await this.request<ChatwootConversation>(`/accounts/${this.accountId}/conversations`, {
-      method: "POST",
+      method: 'POST',
       body: JSON.stringify(dto),
     });
   }
@@ -228,13 +218,10 @@ export class ChatwootClient {
    */
   public async addLabelsToConversation(conversationId: number, labels: string[]): Promise<void> {
     if (labels.length === 0) return;
-    await this.request<{ payload: string[] }>(
-      `/accounts/${this.accountId}/conversations/${conversationId}/labels`,
-      {
-        method: "POST",
-        body: JSON.stringify({ labels }),
-      },
-    );
+    await this.request<{payload: string[]}>(`/accounts/${this.accountId}/conversations/${conversationId}/labels`, {
+      method: 'POST',
+      body: JSON.stringify({labels}),
+    });
   }
 
   /**
@@ -245,17 +232,11 @@ export class ChatwootClient {
    * @param dto Dados da mensagem a ser criada.
    * @returns Mensagem criada.
    */
-  public async createMessage(
-    conversationId: number,
-    dto: CreateMessageDTO,
-  ): Promise<ChatwootMessage> {
-    return await this.request<ChatwootMessage>(
-      `/accounts/${this.accountId}/conversations/${conversationId}/messages`,
-      {
-        method: "POST",
-        body: JSON.stringify(dto),
-      },
-    );
+  public async createMessage(conversationId: number, dto: CreateMessageDTO): Promise<ChatwootMessage> {
+    return await this.request<ChatwootMessage>(`/accounts/${this.accountId}/conversations/${conversationId}/messages`, {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    });
   }
 
   /**
@@ -265,16 +246,13 @@ export class ChatwootClient {
    * @param conversationId ID da conversa.
    * @param status Novo status da conversa.
    */
-  public async toggleStatus(
-    conversationId: number,
-    status: "open" | "resolved" | "pending",
-  ): Promise<void> {
-    await this.request<{ payload: { current_status: string } }>(
+  public async toggleStatus(conversationId: number, status: 'open' | 'resolved' | 'pending'): Promise<void> {
+    await this.request<{payload: {current_status: string}}>(
       `/accounts/${this.accountId}/conversations/${conversationId}/toggle_status`,
       {
-        method: "POST",
-        body: JSON.stringify({ status }),
-      },
+        method: 'POST',
+        body: JSON.stringify({status}),
+      }
     );
   }
 

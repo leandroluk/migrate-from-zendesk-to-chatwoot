@@ -23,7 +23,7 @@ export interface ChatwootConversation {
   id: number;
   account_id: number;
   inbox_id: number;
-  status: "open" | "resolved" | "pending" | "snoozed";
+  status: 'open' | 'resolved' | 'pending' | 'snoozed';
   contact_inbox?: {
     contact_id: number;
     inbox_id: number;
@@ -41,7 +41,7 @@ export interface ChatwootConversation {
 export interface ChatwootMessage {
   id: number;
   content: string;
-  message_type: "incoming" | "outgoing" | "template";
+  message_type: 'incoming' | 'outgoing' | 'template';
   private: boolean;
   created_at: number | string;
   conversation_id: number;
@@ -94,7 +94,7 @@ export interface CreateContactDTO {
 export interface CreateConversationDTO {
   inbox_id: number;
   contact_id: number;
-  status?: "open" | "resolved" | "pending";
+  status?: 'open' | 'resolved' | 'pending';
   assignee_id?: number;
   team_id?: number;
   custom_attributes?: Record<string, unknown>;
@@ -108,6 +108,6 @@ export interface CreateConversationDTO {
  */
 export interface CreateMessageDTO {
   content: string;
-  message_type?: "incoming" | "outgoing";
+  message_type?: 'incoming' | 'outgoing';
   private?: boolean;
 }

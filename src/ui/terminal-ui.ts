@@ -1,6 +1,6 @@
-import cliProgress from "cli-progress";
-import ora, { type Ora } from "ora";
-import pc from "picocolors";
+import cliProgress from 'cli-progress';
+import ora, {type Ora} from 'ora';
+import pc from 'picocolors';
 
 /**
  * Interface que define os dados consolidados do resumo de execução da migração.
@@ -46,13 +46,11 @@ export class TerminalUI {
    * Exibe o banner de apresentação do projeto no terminal.
    */
   public printBanner(): void {
-    console.log("\n" + pc.cyan("╔══════════════════════════════════════════════════════════════╗"));
+    console.log('\n' + pc.cyan('╔══════════════════════════════════════════════════════════════╗'));
     console.log(
-      pc.cyan("║") +
-        pc.bold(pc.white("   MIGRAÇÃO DE CHAMADOS: ZENDESK  ➜  CHATWOOT (POC)          ")) +
-        pc.cyan("║"),
+      pc.cyan('║') + pc.bold(pc.white('   MIGRAÇÃO DE CHAMADOS: ZENDESK  ➜  CHATWOOT (POC)          ')) + pc.cyan('║')
     );
-    console.log(pc.cyan("╚══════════════════════════════════════════════════════════════╝\n"));
+    console.log(pc.cyan('╚══════════════════════════════════════════════════════════════╝\n'));
   }
 
   /**
@@ -66,7 +64,7 @@ export class TerminalUI {
     }
     this.currentSpinner = ora({
       text: pc.white(message),
-      color: "cyan",
+      color: 'cyan',
     }).start();
   }
 
@@ -113,22 +111,22 @@ export class TerminalUI {
    * @param title Rótulo descritivo da barra.
    * @returns Instância da barra de progresso criada.
    */
-  public createProgressBar(total: number, title: string = "Migrando"): cliProgress.SingleBar {
+  public createProgressBar(total: number, title: string = 'Migrando'): cliProgress.SingleBar {
     if (this.progressBar) {
       this.progressBar.stop();
     }
 
     this.progressBar = new cliProgress.SingleBar(
       {
-        format: `${pc.cyan("{bar}")} | ${pc.bold("{percentage}%")} | {value}/{total} Chamados | ETA: {eta_formatted} | ${pc.dim("{status}")}`,
-        barCompleteChar: "█",
-        barIncompleteChar: "░",
+        format: `${pc.cyan('{bar}')} | ${pc.bold('{percentage}%')} | {value}/{total} Chamados | ETA: {eta_formatted} | ${pc.dim('{status}')}`,
+        barCompleteChar: '█',
+        barIncompleteChar: '░',
         hideCursor: true,
       },
-      cliProgress.Presets.shades_classic,
+      cliProgress.Presets.shades_classic
     );
 
-    this.progressBar.start(total, 0, { status: title });
+    this.progressBar.start(total, 0, {status: title});
     return this.progressBar;
   }
 
@@ -160,7 +158,7 @@ export class TerminalUI {
    * @param message Mensagem de texto.
    */
   public logInfo(message: string): void {
-    console.log(pc.blue("ℹ ") + pc.white(message));
+    console.log(pc.blue('ℹ ') + pc.white(message));
   }
 
   /**
@@ -169,7 +167,7 @@ export class TerminalUI {
    * @param message Mensagem de texto.
    */
   public logSuccess(message: string): void {
-    console.log(pc.green("✔ ") + pc.green(message));
+    console.log(pc.green('✔ ') + pc.green(message));
   }
 
   /**
@@ -178,7 +176,7 @@ export class TerminalUI {
    * @param message Mensagem de texto.
    */
   public logWarning(message: string): void {
-    console.log(pc.yellow("⚠ ") + pc.yellow(message));
+    console.log(pc.yellow('⚠ ') + pc.yellow(message));
   }
 
   /**
@@ -188,11 +186,11 @@ export class TerminalUI {
    * @param error Objeto ou causa raiz do erro.
    */
   public logError(message: string, error?: unknown): void {
-    console.error(pc.red("✖ ") + pc.bold(pc.red(message)));
+    console.error(pc.red('✖ ') + pc.bold(pc.red(message)));
     if (error instanceof Error) {
       console.error(pc.dim(`  Detalhes: ${error.message}`));
       if (error.stack) {
-        console.error(pc.dim(`  Stack: ${error.stack.split("\n").slice(1, 3).join("\n")}`));
+        console.error(pc.dim(`  Stack: ${error.stack.split('\n').slice(1, 3).join('\n')}`));
       }
     } else if (error) {
       console.error(pc.dim(`  Detalhes: ${String(error)}`));
@@ -205,11 +203,9 @@ export class TerminalUI {
    * @param stats Estatísticas acumuladas da execução.
    */
   public printSummary(stats: MigrationSummaryStats): void {
-    const elapsedSeconds = ((stats.endTime.getTime() - stats.startTime.getTime()) / 1000).toFixed(
-      1,
-    );
+    const elapsedSeconds = ((stats.endTime.getTime() - stats.startTime.getTime()) / 1000).toFixed(1);
 
-    console.log("\n" + pc.bold(pc.cyan("📊 RESUMO DA EXECUÇÃO:")));
+    console.log('\n' + pc.bold(pc.cyan('📊 RESUMO DA EXECUÇÃO:')));
     console.log(pc.white(`   - Total avaliado:     ${stats.total}`));
     console.log(pc.green(`   - Migrados com êxito: ${stats.success}`));
     console.log(pc.red(`   - Falhas/Erros:       ${stats.failed}`));

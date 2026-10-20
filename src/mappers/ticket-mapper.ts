@@ -1,5 +1,5 @@
-import { DictionaryService } from "../dictionaries";
-import type { CreateMessageDTO, ZendeskComment, ZendeskTicket, ZendeskUser } from "../types";
+import {DictionaryService} from '../dictionaries';
+import type {CreateMessageDTO, ZendeskComment, ZendeskTicket, ZendeskUser} from '../types';
 
 /**
  * Classe utilitária responsável por mapear e transformar entidades do Zendesk
@@ -16,19 +16,19 @@ export class TicketMapper {
    * @param zendeskStatus Status original no Zendesk ('new', 'open', 'pending', 'hold', 'solved', 'closed').
    * @returns Status equivalente no Chatwoot ('open', 'pending', 'resolved').
    */
-  public static mapStatus(zendeskStatus: ZendeskTicket["status"]): "open" | "pending" | "resolved" {
+  public static mapStatus(zendeskStatus: ZendeskTicket['status']): 'open' | 'pending' | 'resolved' {
     switch (zendeskStatus) {
-      case "new":
-      case "open":
-        return "open";
-      case "pending":
-      case "hold":
-        return "pending";
-      case "solved":
-      case "closed":
-        return "resolved";
+      case 'new':
+      case 'open':
+        return 'open';
+      case 'pending':
+      case 'hold':
+        return 'pending';
+      case 'solved':
+      case 'closed':
+        return 'resolved';
       default:
-        return "open";
+        return 'open';
     }
   }
 
@@ -46,13 +46,13 @@ export class TicketMapper {
   public static toChatwootMessageDTO(
     comment: ZendeskComment,
     author: ZendeskUser,
-    authorRoleLabel?: string,
+    authorRoleLabel?: string
   ): CreateMessageDTO {
     const dictService = DictionaryService.getInstance();
     const dict = dictService.get();
 
     const formattedDate = new Date(comment.created_at).toLocaleString(dict.locale, {
-      timeZone: "UTC",
+      timeZone: 'UTC',
     });
 
     const isInternalNote = !comment.public;
@@ -62,7 +62,7 @@ export class TicketMapper {
     let content = `${dict.messages.commentHeader(formattedDate, resolvedRole, author.name, author.email)}\n\n`;
 
     // Corpo da mensagem
-    const rawBody = comment.plain_body || comment.body || "";
+    const rawBody = comment.plain_body || comment.body || '';
     content += rawBody.trim();
 
     // Sumário e links diretos dos anexos a partir do dicionário
@@ -77,7 +77,7 @@ export class TicketMapper {
     return {
       content,
       private: isInternalNote,
-      message_type: author.role === "end-user" ? "incoming" : "outgoing",
+      message_type: author.role === 'end-user' ? 'incoming' : 'outgoing',
     };
   }
 
@@ -90,15 +90,12 @@ export class TicketMapper {
    * @param requester Objeto do usuário requisitante.
    * @returns Texto explicativo da abertura do chamado formatado pelo dicionário.
    */
-  public static generateInitialConversationMessage(
-    ticket: ZendeskTicket,
-    requester: ZendeskUser,
-  ): string {
+  public static generateInitialConversationMessage(ticket: ZendeskTicket, requester: ZendeskUser): string {
     const dictService = DictionaryService.getInstance();
     const dict = dictService.get();
 
     const formattedDate = new Date(ticket.created_at).toLocaleString(dict.locale, {
-      timeZone: "UTC",
+      timeZone: 'UTC',
     });
     const priorityLabel = dictService.getPriorityLabel(ticket.priority);
     const statusLabel = dictService.getStatusLabel(ticket.status);

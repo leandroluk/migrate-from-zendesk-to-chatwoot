@@ -1,6 +1,6 @@
-import type { ChatwootClient, ZendeskClient } from "../clients";
-import type { PermissionValidationResult } from "../types";
-import { TerminalUI } from "../ui";
+import type {ChatwootClient, ZendeskClient} from '../clients';
+import type {PermissionValidationResult} from '../types';
+import {TerminalUI} from '../ui';
 
 /**
  * Serviço responsável por executar o Passo 1 do fluxo:
@@ -32,10 +32,10 @@ export class PermissionService {
    * @returns Resultado consolidado com indicador de sucesso e lista de erros caso haja pendências.
    */
   public async validatePermissions(): Promise<PermissionValidationResult> {
-    this.ui.startSpinner("Validando credenciais e permissões no Zendesk e Chatwoot...");
+    this.ui.startSpinner('Validando credenciais e permissões no Zendesk e Chatwoot...');
     const errors: string[] = [];
 
-    let zendeskRole = "unknown";
+    let zendeskRole = 'unknown';
     let zendeskAuth = false;
 
     // 1. Validação no Zendesk
@@ -46,13 +46,11 @@ export class PermissionService {
 
       if (!zdCheck.valid) {
         errors.push(
-          `Zendesk: Usuário (${zdCheck.email}) possui papel '${zdCheck.role}', mas necessita ser 'admin' ou 'agent' ativo.`,
+          `Zendesk: Usuário (${zdCheck.email}) possui papel '${zdCheck.role}', mas necessita ser 'admin' ou 'agent' ativo.`
         );
       }
     } catch (error) {
-      errors.push(
-        `Zendesk: Falha na autenticação - ${error instanceof Error ? error.message : String(error)}`,
-      );
+      errors.push(`Zendesk: Falha na autenticação - ${error instanceof Error ? error.message : String(error)}`);
     }
 
     // 2. Validação no Chatwoot
@@ -66,13 +64,11 @@ export class PermissionService {
 
       if (!cwCheck.valid) {
         errors.push(
-          `Chatwoot: Usuário (${cwCheck.email ?? "desconhecido"}) não possui papel de administrador na conta configurada.`,
+          `Chatwoot: Usuário (${cwCheck.email ?? 'desconhecido'}) não possui papel de administrador na conta configurada.`
         );
       }
     } catch (error) {
-      errors.push(
-        `Chatwoot: Falha na autenticação - ${error instanceof Error ? error.message : String(error)}`,
-      );
+      errors.push(`Chatwoot: Falha na autenticação - ${error instanceof Error ? error.message : String(error)}`);
     }
 
     const result: PermissionValidationResult = {
@@ -84,10 +80,10 @@ export class PermissionService {
     };
 
     if (errors.length > 0) {
-      this.ui.failSpinner("Falha na verificação de permissões.");
-      errors.forEach((err) => this.ui.logError(err));
+      this.ui.failSpinner('Falha na verificação de permissões.');
+      errors.forEach(err => this.ui.logError(err));
     } else {
-      this.ui.succeedSpinner("Autenticação e permissões confirmadas no Zendesk e Chatwoot!");
+      this.ui.succeedSpinner('Autenticação e permissões confirmadas no Zendesk e Chatwoot!');
     }
 
     return result;

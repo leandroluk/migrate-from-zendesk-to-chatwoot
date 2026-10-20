@@ -1,1 +1,1 @@
-export * from "./terminal-ui";
+export * from './terminal-ui';

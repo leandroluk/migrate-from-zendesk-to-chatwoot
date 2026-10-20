@@ -45,7 +45,7 @@ export interface ZendeskUser {
   id: number;
   name: string;
   email: string;
-  role: "end-user" | "agent" | "admin";
+  role: 'end-user' | 'agent' | 'admin';
   custom_role_id?: number | null;
   active: boolean;
   verified?: boolean;
@@ -87,8 +87,8 @@ export interface ZendeskTicket {
   url: string;
   subject: string;
   description: string;
-  status: "new" | "open" | "pending" | "hold" | "solved" | "closed";
-  priority?: "urgent" | "high" | "normal" | "low";
+  status: 'new' | 'open' | 'pending' | 'hold' | 'solved' | 'closed';
+  priority?: 'urgent' | 'high' | 'normal' | 'low';
   requester_id: number;
   submitter_id?: number;
   assignee_id?: number;

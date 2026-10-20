@@ -1,0 +1,40 @@
+{
+  "editor.codeActionsOnSave": {
+    "source.fixAll.oxc": "explicit",
+    "source.removeUnusedImports": "explicit",
+    "source.fixAll": "explicit"
+  },
+  "editor.defaultFormatter": "oxc.oxc-vscode",
+  "editor.detectIndentation": false,
+  "editor.formatOnPaste": true,
+  "editor.formatOnSave": true,
+  "editor.formatOnSaveMode": "file",
+  "editor.formatOnType": true,
+  "editor.insertSpaces": true,
+  "editor.rulers": [80, 100, 120],
+  "editor.tabSize": 2,
+  "files.associations": {
+    ".env*": "shellscript",
+    "*.tmpl": "markdown"
+  },
+  "files.encoding": "utf8",
+  "files.eol": "\n",
+  "files.insertFinalNewline": false,
+  "files.trimFinalNewlines": true,
+  "files.watcherExclude": {
+    "**/node_modules/**": true
+  },
+  "git.inputValidation": false,
+  "javascript.format.insertSpaceAfterOpeningAndBeforeClosingNonemptyBraces": false,
+  "oxc.enable": true,
+  "oxc.enable.oxfmt": true,
+  "oxc.enable.oxlint": true,
+  "oxc.fmt.configPath": ".oxfmtrc.json",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "typescript.format.insertSpaceAfterOpeningAndBeforeClosingNonemptyBraces": false,
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.tsserver.watchOptions": {
+    "excludeDirectories": ["**/.next", "**/.turbo", "**/dist", "**/node_modules"]
+  },
+  "vitest.cliArguments": "--test-timeout=999999"
+}

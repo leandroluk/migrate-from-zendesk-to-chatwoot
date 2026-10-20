@@ -1,6 +1,6 @@
-import type { ChatwootClient, ZendeskClient } from "../clients";
-import type { EdgeAssessmentResult, EdgeMigrationResult } from "../types";
-import { TerminalUI } from "../ui";
+import type {ChatwootClient, ZendeskClient} from '../clients';
+import type {EdgeAssessmentResult, EdgeMigrationResult} from '../types';
+import {TerminalUI} from '../ui';
 
 /**
  * Serviço responsável por executar o Passo 2 do fluxo:
@@ -33,9 +33,7 @@ export class EdgeMigrationService {
    * @returns Resultado do levantamento de arestas existentes e faltantes.
    */
   public async assessEdges(): Promise<EdgeAssessmentResult> {
-    this.ui.startSpinner(
-      "Mensurando arestas pré-requisito (tags e grupos) no Zendesk e Chatwoot...",
-    );
+    this.ui.startSpinner('Mensurando arestas pré-requisito (tags e grupos) no Zendesk e Chatwoot...');
 
     // 1. Obter tags, grupos e papéis personalizados do Zendesk
     const [zdTags, zdGroups, zdCustomRoles] = await Promise.all([
@@ -45,26 +43,21 @@ export class EdgeMigrationService {
     ]);
 
     // 2. Obter labels e teams do Chatwoot
-    const [cwLabels, cwTeams] = await Promise.all([
-      this.chatwootClient.listLabels(),
-      this.chatwootClient.listTeams(),
-    ]);
+    const [cwLabels, cwTeams] = await Promise.all([this.chatwootClient.listLabels(), this.chatwootClient.listTeams()]);
 
-    const existingLabelTitles = new Set(cwLabels.map((l) => l.title.toLowerCase()));
-    const existingTeamNames = new Set(cwTeams.map((t) => t.name.toLowerCase()));
+    const existingLabelTitles = new Set(cwLabels.map(l => l.title.toLowerCase()));
+    const existingTeamNames = new Set(cwTeams.map(t => t.name.toLowerCase()));
 
     // Filtra as arestas ausentes
-    const missingTags = zdTags.filter((tag) => !existingLabelTitles.has(tag.name.toLowerCase()));
-    const missingGroups = zdGroups.filter((g) => !existingTeamNames.has(g.name.toLowerCase()));
+    const missingTags = zdTags.filter(tag => !existingLabelTitles.has(tag.name.toLowerCase()));
+    const missingGroups = zdGroups.filter(g => !existingTeamNames.has(g.name.toLowerCase()));
 
     const customRolesInfo =
-      zdCustomRoles.length > 0
-        ? `, ${zdCustomRoles.length} papéis personalizados identificados.`
-        : ".";
+      zdCustomRoles.length > 0 ? `, ${zdCustomRoles.length} papéis personalizados identificados.` : '.';
 
     this.ui.succeedSpinner(
       `Arestas mensuradas: ${zdTags.length} tags (${missingTags.length} ausentes no Chatwoot), ` +
-        `${zdGroups.length} grupos (${missingGroups.length} ausentes no Chatwoot)${customRolesInfo}`,
+        `${zdGroups.length} grupos (${missingGroups.length} ausentes no Chatwoot)${customRolesInfo}`
     );
 
     return {
@@ -84,11 +77,11 @@ export class EdgeMigrationService {
    */
   public async migrateEdges(assessment: EdgeAssessmentResult): Promise<EdgeMigrationResult> {
     if (assessment.missingLabelsCount === 0 && assessment.missingTeamsCount === 0) {
-      this.ui.logInfo("Todas as arestas (tags e equipes) já estão sincronizadas no Chatwoot.");
-      return { labelsCreated: 0, teamsCreated: 0 };
+      this.ui.logInfo('Todas as arestas (tags e equipes) já estão sincronizadas no Chatwoot.');
+      return {labelsCreated: 0, teamsCreated: 0};
     }
 
-    this.ui.startSpinner("Sincronizando arestas faltantes no Chatwoot...");
+    this.ui.startSpinner('Sincronizando arestas faltantes no Chatwoot...');
     let labelsCreated = 0;
     let teamsCreated = 0;
 
@@ -98,9 +91,7 @@ export class EdgeMigrationService {
         await this.chatwootClient.createLabel(tag.name);
         labelsCreated++;
       } catch (err) {
-        this.ui.logWarning(
-          `Não foi possível criar a label '${tag.name}' no Chatwoot: ${String(err)}`,
-        );
+        this.ui.logWarning(`Não foi possível criar a label '${tag.name}' no Chatwoot: ${String(err)}`);
       }
     }
 
@@ -110,16 +101,14 @@ export class EdgeMigrationService {
         await this.chatwootClient.createTeam(group.name, group.description);
         teamsCreated++;
       } catch (err) {
-        this.ui.logWarning(
-          `Não foi possível criar a equipe '${group.name}' no Chatwoot: ${String(err)}`,
-        );
+        this.ui.logWarning(`Não foi possível criar a equipe '${group.name}' no Chatwoot: ${String(err)}`);
       }
     }
 
     this.ui.succeedSpinner(
-      `Arestas migradas no Chatwoot com sucesso: ${labelsCreated} labels e ${teamsCreated} equipes criadas.`,
+      `Arestas migradas no Chatwoot com sucesso: ${labelsCreated} labels e ${teamsCreated} equipes criadas.`
     );
 
-    return { labelsCreated, teamsCreated };
+    return {labelsCreated, teamsCreated};
   }
 }

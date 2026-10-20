@@ -1,4 +1,4 @@
-import type { AppConfig } from "../config";
+import type {AppConfig} from '../config';
 import type {
   ZendeskComment,
   ZendeskCustomRole,
@@ -7,7 +7,7 @@ import type {
   ZendeskTag,
   ZendeskTicket,
   ZendeskUser,
-} from "../types";
+} from '../types';
 
 /**
  * Cliente HTTP orientado a objetos para interação com a API REST v2 do Zendesk.
@@ -32,9 +32,7 @@ export class ZendeskClient {
    */
   public constructor(config: AppConfig) {
     this.baseUrl = `https://${config.ZENDESK_SUBDOMAIN}.zendesk.com/api/v2`;
-    const credentials = Buffer.from(
-      `${config.ZENDESK_EMAIL}/token:${config.ZENDESK_API_TOKEN}`,
-    ).toString("base64");
+    const credentials = Buffer.from(`${config.ZENDESK_EMAIL}/token:${config.ZENDESK_API_TOKEN}`).toString('base64');
     this.authHeader = `Basic ${credentials}`;
   }
 
@@ -50,29 +48,25 @@ export class ZendeskClient {
     const url = `${this.baseUrl}${endpoint}`;
     const headers = {
       Authorization: this.authHeader,
-      "Content-Type": "application/json",
-      Accept: "application/json",
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
       ...options.headers,
     };
 
-    const response = await fetch(url, { ...options, headers });
+    const response = await fetch(url, {...options, headers});
 
     if (response.status === 404) {
       throw new Error(`[ZendeskClient] Recurso não encontrado (404) em ${endpoint}`);
     }
 
     if (response.status === 429) {
-      const retryAfter = response.headers.get("Retry-After") ?? "60";
-      throw new Error(
-        `[ZendeskClient] Limite de requisições excedido (429). Aguarde ${retryAfter}s.`,
-      );
+      const retryAfter = response.headers.get('Retry-After') ?? '60';
+      throw new Error(`[ZendeskClient] Limite de requisições excedido (429). Aguarde ${retryAfter}s.`);
     }
 
     if (!response.ok) {
       const errorBody = await response.text();
-      throw new Error(
-        `[ZendeskClient] Erro HTTP ${response.status} ao acessar ${endpoint}: ${errorBody}`,
-      );
+      throw new Error(`[ZendeskClient] Erro HTTP ${response.status} ao acessar ${endpoint}: ${errorBody}`);
     }
 
     return (await response.json()) as T;
@@ -85,7 +79,7 @@ export class ZendeskClient {
    * @returns Promessa com o ZendeskUser da sessão atual.
    */
   public async getCurrentUser(): Promise<ZendeskUser> {
-    const data = await this.request<{ user: ZendeskUser }>("/users/me.json");
+    const data = await this.request<{user: ZendeskUser}>('/users/me.json');
     return data.user;
   }
 
@@ -95,9 +89,9 @@ export class ZendeskClient {
    * @spec REQ-MIG-002
    * @returns Objeto com indicador de validade, papel (role) e e-mail.
    */
-  public async verifyPermissions(): Promise<{ valid: boolean; role: string; email: string }> {
+  public async verifyPermissions(): Promise<{valid: boolean; role: string; email: string}> {
     const user = await this.getCurrentUser();
-    const hasPrivilege = user.role === "admin" || user.role === "agent";
+    const hasPrivilege = user.role === 'admin' || user.role === 'agent';
     return {
       valid: hasPrivilege && user.active,
       role: user.role,
@@ -115,10 +109,10 @@ export class ZendeskClient {
    */
   public async getTicket(ticketId: number): Promise<ZendeskTicket | null> {
     try {
-      const data = await this.request<{ ticket: ZendeskTicket }>(`/tickets/${ticketId}.json`);
+      const data = await this.request<{ticket: ZendeskTicket}>(`/tickets/${ticketId}.json`);
       return data.ticket;
     } catch (error) {
-      if (error instanceof Error && error.message.includes("404")) {
+      if (error instanceof Error && error.message.includes('404')) {
         return null;
       }
       throw error;
@@ -133,9 +127,7 @@ export class ZendeskClient {
    * @returns Lista de comentários ordenados cronologicamente.
    */
   public async getTicketComments(ticketId: number): Promise<ZendeskComment[]> {
-    const data = await this.request<{ comments: ZendeskComment[] }>(
-      `/tickets/${ticketId}/comments.json`,
-    );
+    const data = await this.request<{comments: ZendeskComment[]}>(`/tickets/${ticketId}/comments.json`);
     return data.comments;
   }
 
@@ -152,7 +144,7 @@ export class ZendeskClient {
       return cached;
     }
 
-    const data = await this.request<{ user: ZendeskUser }>(`/users/${userId}.json`);
+    const data = await this.request<{user: ZendeskUser}>(`/users/${userId}.json`);
     this.userCache.set(userId, data.user);
     return data.user;
   }
@@ -164,7 +156,7 @@ export class ZendeskClient {
    * @returns Lista de tags existentes.
    */
   public async listTags(): Promise<ZendeskTag[]> {
-    const data = await this.request<{ tags: ZendeskTag[] }>("/tags.json");
+    const data = await this.request<{tags: ZendeskTag[]}>('/tags.json');
     return data.tags ?? [];
   }
 
@@ -175,7 +167,7 @@ export class ZendeskClient {
    * @returns Lista de grupos do Zendesk.
    */
   public async listGroups(): Promise<ZendeskGroup[]> {
-    const data = await this.request<{ groups: ZendeskGroup[] }>("/groups.json");
+    const data = await this.request<{groups: ZendeskGroup[]}>('/groups.json');
     return data.groups ?? [];
   }
 
@@ -189,8 +181,8 @@ export class ZendeskClient {
    * @returns Resposta com a lista de chamados e metadados de paginação.
    */
   public async searchTicketsWithoutTag(
-    excludedTag: string = "chatwoot",
-    page: number = 1,
+    excludedTag: string = 'chatwoot',
+    page: number = 1
   ): Promise<ZendeskSearchResponse> {
     const query = encodeURIComponent(`type:ticket -tags:${excludedTag}`);
     const endpoint = `/search.json?query=${query}&sort_by=created_at&sort_order=asc&page=${page}`;
@@ -205,9 +197,9 @@ export class ZendeskClient {
    * @param tag Nome da tag a ser anexada (ex: 'chatwoot').
    */
   public async addTagToTicket(ticketId: number, tag: string): Promise<void> {
-    await this.request<{ tags: string[] }>(`/tickets/${ticketId}/tags.json`, {
-      method: "PUT",
-      body: JSON.stringify({ tags: [tag] }),
+    await this.request<{tags: string[]}>(`/tickets/${ticketId}/tags.json`, {
+      method: 'PUT',
+      body: JSON.stringify({tags: [tag]}),
     });
   }
 
@@ -220,9 +212,9 @@ export class ZendeskClient {
    */
   public async listCustomRoles(): Promise<ZendeskCustomRole[]> {
     try {
-      const data = await this.request<{ custom_roles: ZendeskCustomRole[] }>("/custom_roles.json");
+      const data = await this.request<{custom_roles: ZendeskCustomRole[]}>('/custom_roles.json');
       const roles = data.custom_roles ?? [];
-      roles.forEach((r) => this.customRolesCache.set(r.id, r.name));
+      roles.forEach(r => this.customRolesCache.set(r.id, r.name));
       return roles;
     } catch {
       // Planos sem suporte a custom roles ou falta de permissão retornam vazio
@@ -239,10 +231,7 @@ export class ZendeskClient {
    * @param fallbackFn Função opcional de fallback para papéis nativos.
    * @returns Nome do papel resolvido (ex: "Suporte N2", "Administrador", etc.).
    */
-  public async resolveUserRoleName(
-    user: ZendeskUser,
-    fallbackFn?: (role: string) => string,
-  ): Promise<string> {
+  public async resolveUserRoleName(user: ZendeskUser, fallbackFn?: (role: string) => string): Promise<string> {
     if (user.custom_role_id) {
       if (this.customRolesCache.size === 0) {
         await this.listCustomRoles();

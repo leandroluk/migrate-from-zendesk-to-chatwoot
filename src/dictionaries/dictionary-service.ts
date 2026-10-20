@@ -1,6 +1,6 @@
-import { enUSDictionary } from "./en-us";
-import { ptBRDictionary } from "./pt-br";
-import type { MigrationDictionary } from "./types";
+import {enUSDictionary} from './en-us';
+import {ptBRDictionary} from './pt-br';
+import type {MigrationDictionary} from './types';
 
 /**
  * Serviço responsável por gerenciar e fornecer o dicionário ativo de textos e traduções
@@ -18,11 +18,11 @@ export class DictionaryService {
    *
    * @param locale Código do locale/dicionário desejado (ex: 'pt-BR', 'en-US').
    */
-  private constructor(locale: string = "pt-BR") {
-    this.dictionaries.set("pt-br", ptBRDictionary);
-    this.dictionaries.set("pt", ptBRDictionary);
-    this.dictionaries.set("en-us", enUSDictionary);
-    this.dictionaries.set("en", enUSDictionary);
+  private constructor(locale: string = 'pt-BR') {
+    this.dictionaries.set('pt-br', ptBRDictionary);
+    this.dictionaries.set('pt', ptBRDictionary);
+    this.dictionaries.set('en-us', enUSDictionary);
+    this.dictionaries.set('en', enUSDictionary);
 
     const normalizedLocale = locale.toLowerCase().trim();
     this.activeDictionary = this.dictionaries.get(normalizedLocale) ?? ptBRDictionary;
@@ -58,11 +58,11 @@ export class DictionaryService {
    */
   public getRoleLabel(role: string): string {
     switch (role) {
-      case "admin":
+      case 'admin':
         return this.activeDictionary.roles.admin;
-      case "agent":
+      case 'agent':
         return this.activeDictionary.roles.agent;
-      case "end-user":
+      case 'end-user':
         return this.activeDictionary.roles.endUser;
       default:
         return role.charAt(0).toUpperCase() + role.slice(1);
@@ -77,13 +77,13 @@ export class DictionaryService {
    */
   public getPriorityLabel(priority?: string): string {
     switch (priority) {
-      case "urgent":
+      case 'urgent':
         return this.activeDictionary.priorities.urgent;
-      case "high":
+      case 'high':
         return this.activeDictionary.priorities.high;
-      case "normal":
+      case 'normal':
         return this.activeDictionary.priorities.normal;
-      case "low":
+      case 'low':
         return this.activeDictionary.priorities.low;
       default:
         return this.activeDictionary.priorities.normal;
@@ -99,17 +99,17 @@ export class DictionaryService {
   public getStatusLabel(status: string): string {
     const statuses = this.activeDictionary.statuses;
     switch (status) {
-      case "new":
+      case 'new':
         return statuses.new;
-      case "open":
+      case 'open':
         return statuses.open;
-      case "pending":
+      case 'pending':
         return statuses.pending;
-      case "hold":
+      case 'hold':
         return statuses.hold;
-      case "solved":
+      case 'solved':
         return statuses.solved;
-      case "closed":
+      case 'closed':
         return statuses.closed;
       default:
         return status;

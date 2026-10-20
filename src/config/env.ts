@@ -1,42 +1,38 @@
-import dotenv from "dotenv";
-import { z } from "zod";
+import dotenv from 'dotenv';
+import {z} from 'zod';
 
 // Carrega as variáveis do arquivo .env
 dotenv.config();
 
 // @spec REQ-MIG-001
 const envSchema = z.object({
-  ZENDESK_SUBDOMAIN: z.string().min(1, "O subdomínio do Zendesk é obrigatório."),
-  ZENDESK_EMAIL: z.string().email("O e-mail do Zendesk deve ser válido."),
-  ZENDESK_API_TOKEN: z.string().min(1, "O token de API do Zendesk é obrigatório."),
+  ZENDESK_SUBDOMAIN: z.string().min(1, 'O subdomínio do Zendesk é obrigatório.'),
+  ZENDESK_EMAIL: z.string().email('O e-mail do Zendesk deve ser válido.'),
+  ZENDESK_API_TOKEN: z.string().min(1, 'O token de API do Zendesk é obrigatório.'),
 
   CHATWOOT_BASE_URL: z
     .string()
-    .url("A URL base do Chatwoot deve ser uma URL válida.")
-    .default("https://app.chatwoot.com"),
-  CHATWOOT_API_TOKEN: z.string().min(1, "O token de acesso do Chatwoot é obrigatório."),
-  CHATWOOT_ACCOUNT_ID: z.coerce
-    .number()
-    .positive("O ID da conta do Chatwoot deve ser um número positivo."),
-  CHATWOOT_INBOX_ID: z.coerce
-    .number()
-    .positive("O ID da caixa de entrada do Chatwoot deve ser positivo."),
+    .url('A URL base do Chatwoot deve ser uma URL válida.')
+    .default('https://app.chatwoot.com'),
+  CHATWOOT_API_TOKEN: z.string().min(1, 'O token de acesso do Chatwoot é obrigatório.'),
+  CHATWOOT_ACCOUNT_ID: z.coerce.number().positive('O ID da conta do Chatwoot deve ser um número positivo.'),
+  CHATWOOT_INBOX_ID: z.coerce.number().positive('O ID da caixa de entrada do Chatwoot deve ser positivo.'),
 
   MIGRATION_TICKET_ID: z
     .string()
-    .default("*")
-    .refine((val) => {
+    .default('*')
+    .refine(val => {
       const trimmed = val.trim();
-      if (trimmed === "*") return true;
-      const parts = trimmed.split(",").map((p) => p.trim());
-      return parts.length > 0 && parts.every((p) => /^\d+$/.test(p));
+      if (trimmed === '*') return true;
+      const parts = trimmed.split(',').map(p => p.trim());
+      return parts.length > 0 && parts.every(p => /^\d+$/.test(p));
     }, 'MIGRATION_TICKET_ID deve ser "*" ou uma lista de IDs separados por vírgula (ex: "123,456,789").'),
   MIGRATION_BATCH_SIZE: z.coerce.number().int().positive().default(25),
-  MIGRATION_LOCALE: z.string().default("pt-BR"),
+  MIGRATION_LOCALE: z.string().default('pt-BR'),
   MIGRATION_DRY_RUN: z
     .string()
     .optional()
-    .transform((val) => val === "true" || val === "1")
+    .transform(val => val === 'true' || val === '1')
     .pipe(z.boolean())
     .default(false),
 });
@@ -61,12 +57,8 @@ export class ConfigService {
     const result = envSchema.safeParse(process.env);
 
     if (!result.success) {
-      const errorDetails = result.error.issues
-        .map((issue) => ` - ${issue.path.join(".")}: ${issue.message}`)
-        .join("\n");
-      throw new Error(
-        `[ConfigService] Falha na validação das variáveis de ambiente:\n${errorDetails}`,
-      );
+      const errorDetails = result.error.issues.map(issue => ` - ${issue.path.join('.')}: ${issue.message}`).join('\n');
+      throw new Error(`[ConfigService] Falha na validação das variáveis de ambiente:\n${errorDetails}`);
     }
 
     this.config = result.data;
@@ -99,7 +91,7 @@ export class ConfigService {
    * @returns true se MIGRATION_TICKET_ID for '*'; false se houver lista delimitada de IDs.
    */
   public isAllTicketsMode(): boolean {
-    return this.config.MIGRATION_TICKET_ID.trim() === "*";
+    return this.config.MIGRATION_TICKET_ID.trim() === '*';
   }
 
   /**
@@ -120,10 +112,10 @@ export class ConfigService {
     if (this.isAllTicketsMode()) {
       return [];
     }
-    return this.config.MIGRATION_TICKET_ID.split(",")
-      .map((item) => item.trim())
-      .filter((item) => item.length > 0)
-      .map((item) => parseInt(item, 10));
+    return this.config.MIGRATION_TICKET_ID.split(',')
+      .map(item => item.trim())
+      .filter(item => item.length > 0)
+      .map(item => parseInt(item, 10));
   }
 
   /**

@@ -1,11 +1,11 @@
-import { ChatwootClient, ZendeskClient } from "../clients";
-import { ConfigService } from "../config";
-import { DictionaryService } from "../dictionaries";
-import { TicketMapper } from "../mappers";
-import type { ZendeskTicket } from "../types";
-import { TerminalUI, type MigrationSummaryStats } from "../ui";
-import { EdgeMigrationService } from "./edge-migration-service";
-import { PermissionService } from "./permission-service";
+import {ChatwootClient, ZendeskClient} from '../clients';
+import {ConfigService} from '../config';
+import {DictionaryService} from '../dictionaries';
+import {TicketMapper} from '../mappers';
+import type {ZendeskTicket} from '../types';
+import {TerminalUI, type MigrationSummaryStats} from '../ui';
+import {EdgeMigrationService} from './edge-migration-service';
+import {PermissionService} from './permission-service';
 
 /**
  * Orquestrador principal da migração de chamados do Zendesk para o Chatwoot.
@@ -58,17 +58,13 @@ export class MigrationOrchestrator {
 
     const config = this.configService.get();
     if (config.MIGRATION_DRY_RUN) {
-      this.ui.logWarning(
-        "MODO DRY-RUN ATIVADO: Nenhuma gravação real será feita no Chatwoot ou Zendesk.",
-      );
+      this.ui.logWarning('MODO DRY-RUN ATIVADO: Nenhuma gravação real será feita no Chatwoot ou Zendesk.');
     }
 
     // PASSO 1: Autenticação e Verificação de Permissões
     const permissionResult = await this.permissionService.validatePermissions();
     if (permissionResult.errors.length > 0) {
-      this.ui.logError(
-        "Migração abortada devido a inconsistências de permissão nas contas configuradas.",
-      );
+      this.ui.logError('Migração abortada devido a inconsistências de permissão nas contas configuradas.');
       return;
     }
 
@@ -77,7 +73,7 @@ export class MigrationOrchestrator {
     if (!config.MIGRATION_DRY_RUN) {
       await this.edgeMigrationService.migrateEdges(edgeAssessment);
     } else {
-      this.ui.logInfo("[DRY-RUN] Criação de arestas no Chatwoot saltada.");
+      this.ui.logInfo('[DRY-RUN] Criação de arestas no Chatwoot saltada.');
     }
 
     // PASSO 3 & 4: Execução por ID Seguro (Passo 3) ou Loop Contínuo (Passo 4)
@@ -108,23 +104,20 @@ export class MigrationOrchestrator {
    * @param targetIds Lista de IDs de chamados informados via .env.
    * @param stats Estrutura mutável de estatísticas.
    */
-  private async executeExplicitTicketsMode(
-    targetIds: number[],
-    stats: MigrationSummaryStats,
-  ): Promise<void> {
+  private async executeExplicitTicketsMode(targetIds: number[], stats: MigrationSummaryStats): Promise<void> {
     stats.total = targetIds.length;
 
     if (targetIds.length === 1) {
       this.ui.logInfo(`Modo Seguro ativado: Buscando chamado #${targetIds[0]} no Zendesk...`);
     } else {
       this.ui.logInfo(
-        `Modo Lista Delimitada ativado: Processando ${targetIds.length} chamados (${targetIds.join(", ")})...`,
+        `Modo Lista Delimitada ativado: Processando ${targetIds.length} chamados (${targetIds.join(', ')})...`
       );
     }
 
     const useProgressBar = targetIds.length > 1;
     if (useProgressBar) {
-      this.ui.createProgressBar(targetIds.length, "Processando lista de chamados...");
+      this.ui.createProgressBar(targetIds.length, 'Processando lista de chamados...');
     }
 
     for (let i = 0; i < targetIds.length; i++) {
@@ -140,9 +133,7 @@ export class MigrationOrchestrator {
         if (!useProgressBar) {
           this.ui.failSpinner(`Chamado #${ticketId} NÃO foi localizado no Zendesk!`);
         }
-        this.ui.logError(
-          `O chamado #${ticketId} informado no .env não existe no Zendesk. Saltando...`,
-        );
+        this.ui.logError(`O chamado #${ticketId} informado no .env não existe no Zendesk. Saltando...`);
         stats.failed++;
         if (useProgressBar) {
           this.ui.updateProgressBar(stats.success + stats.failed, {
@@ -153,9 +144,7 @@ export class MigrationOrchestrator {
       }
 
       if (!useProgressBar) {
-        this.ui.succeedSpinner(
-          `Chamado #${ticketId} localizado com sucesso (Assunto: "${ticket.subject}").`,
-        );
+        this.ui.succeedSpinner(`Chamado #${ticketId} localizado com sucesso (Assunto: "${ticket.subject}").`);
       }
 
       const success = await this.processSingleTicket(ticket);
@@ -190,22 +179,20 @@ export class MigrationOrchestrator {
     let hasMore = true;
 
     // Busca preliminar para dimensionar o progresso
-    const initialSearch = await this.zendeskClient.searchTicketsWithoutTag("chatwoot", 1);
+    const initialSearch = await this.zendeskClient.searchTicketsWithoutTag('chatwoot', 1);
     const totalPending = initialSearch.count;
     stats.total = totalPending;
 
     if (totalPending === 0) {
-      this.ui.logSuccess(
-        "Nenhum chamado pendente de migração encontrado! Fila com tag 'chatwoot' já zerada.",
-      );
+      this.ui.logSuccess("Nenhum chamado pendente de migração encontrado! Fila com tag 'chatwoot' já zerada.");
       return;
     }
 
     this.ui.logInfo(`Total de chamados identificados para migração: ${totalPending}`);
-    this.ui.createProgressBar(totalPending, "Iniciando lote...");
+    this.ui.createProgressBar(totalPending, 'Iniciando lote...');
 
     while (hasMore) {
-      const searchResult = await this.zendeskClient.searchTicketsWithoutTag("chatwoot", page);
+      const searchResult = await this.zendeskClient.searchTicketsWithoutTag('chatwoot', page);
       const tickets = searchResult.results;
 
       if (!tickets || tickets.length === 0) {
@@ -241,7 +228,7 @@ export class MigrationOrchestrator {
     }
 
     this.ui.stopProgressBar();
-    this.ui.logSuccess("Processamento do lote finalizado com sucesso.");
+    this.ui.logSuccess('Processamento do lote finalizado com sucesso.');
   }
 
   /**
@@ -265,7 +252,7 @@ export class MigrationOrchestrator {
 
       if (isDryRun) {
         this.ui.logInfo(
-          `[DRY-RUN] Simulado: Chamado #${ticket.id} ("${ticket.subject}") -> Requisitante: ${requester.email}, ${comments.length} comentários.`,
+          `[DRY-RUN] Simulado: Chamado #${ticket.id} ("${ticket.subject}") -> Requisitante: ${requester.email}, ${comments.length} comentários.`
         );
         return true;
       }
@@ -276,7 +263,7 @@ export class MigrationOrchestrator {
       if (!contact) {
         contact = await this.chatwootClient.createContact({
           inbox_id: this.chatwootClient.getInboxId(),
-          name: requester.name || requester.email.split("@")[0] || defaultClientName,
+          name: requester.name || requester.email.split('@')[0] || defaultClientName,
           email: requester.email,
         });
       }
@@ -299,33 +286,30 @@ export class MigrationOrchestrator {
       }
 
       // 6. Mensagem inicial com descrição e metadados
-      const initialMessageContent = TicketMapper.generateInitialConversationMessage(
-        ticket,
-        requester,
-      );
+      const initialMessageContent = TicketMapper.generateInitialConversationMessage(ticket, requester);
       await this.chatwootClient.createMessage(conversation.id, {
         content: initialMessageContent,
-        message_type: "incoming",
+        message_type: 'incoming',
         private: false,
       });
 
       // 7. Replay cronológico de comentários e anexos
       for (const comment of comments) {
         const author = await this.zendeskClient.getUser(comment.author_id);
-        const roleName = await this.zendeskClient.resolveUserRoleName(author, (r) =>
-          this.dictionaryService.getRoleLabel(r),
+        const roleName = await this.zendeskClient.resolveUserRoleName(author, r =>
+          this.dictionaryService.getRoleLabel(r)
         );
         const messageDto = TicketMapper.toChatwootMessageDTO(comment, author, roleName);
         await this.chatwootClient.createMessage(conversation.id, messageDto);
       }
 
       // 8. Ajustar status final caso necessário
-      if (conversationStatus !== "open") {
+      if (conversationStatus !== 'open') {
         await this.chatwootClient.toggleStatus(conversation.id, conversationStatus);
       }
 
       // 9. Marcar chamado com a tag 'chatwoot' no Zendesk
-      await this.zendeskClient.addTagToTicket(ticket.id, "chatwoot");
+      await this.zendeskClient.addTagToTicket(ticket.id, 'chatwoot');
 
       return true;
     } catch (error) {

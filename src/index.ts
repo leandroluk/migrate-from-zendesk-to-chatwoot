@@ -1,5 +1,5 @@
-import { MigrationOrchestrator } from "./services";
-import { TerminalUI } from "./ui";
+import {MigrationOrchestrator} from './services';
+import {TerminalUI} from './ui';
 
 /**
  * Ponto de entrada principal da aplicação de migração Zendesk -> Chatwoot.
@@ -11,10 +11,9 @@ async function main(): Promise<void> {
   const ui = TerminalUI.getInstance();
 
   try {
-    const orchestrator = new MigrationOrchestrator();
-    await orchestrator.run();
+    await new MigrationOrchestrator().run();
   } catch (error) {
-    ui.logError("Erro crítico durante a execução da migração:", error);
+    ui.logError('Erro crítico durante a execução da migração:', error);
     process.exit(1);
   }
 }
