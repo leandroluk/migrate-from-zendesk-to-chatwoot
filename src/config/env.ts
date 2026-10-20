@@ -9,15 +9,15 @@ export const envSchema = z.object({
   ZENDESK_EMAIL: z.email(),
   ZENDESK_API_TOKEN: z.string().min(1),
 
-  CHATWOOT_BASE_URL: z.url().default('https://app.chatwoot.com'),
+  CHATWOOT_BASE_URL: z.url().prefault('https://app.chatwoot.com'),
   CHATWOOT_API_TOKEN: z.string().min(1),
   CHATWOOT_ACCOUNT_ID: z.coerce.number().int().positive(),
   CHATWOOT_INBOX_ID: z.coerce.number().int().positive(),
 
-  MIGRATION_TICKET_ID: z.string().default('*'),
-  MIGRATION_BATCH_SIZE: z.coerce.number().int().positive().default(25),
-  MIGRATION_LOCALE: z.string().default('pt-BR'),
-  MIGRATION_DRY_RUN: z.coerce.boolean().default(false),
+  MIGRATION_TICKET_ID: z.string().prefault('*'),
+  MIGRATION_BATCH_SIZE: z.coerce.number().int().positive().prefault(25),
+  MIGRATION_LOCALE: z.string().prefault('pt-BR'),
+  MIGRATION_DRY_RUN: z.preprocess((v: string) => /^(true|1)$/i.test(v.toLowerCase()), z.boolean()),
 });
 
 // @spec REQ-MIG-001
