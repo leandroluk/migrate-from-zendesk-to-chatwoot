@@ -5,41 +5,6 @@ import {z} from 'zod';
 dotenv.config();
 
 /**
- * Validador e normalizador do subdomínio do Zendesk.
- * Remove prefixos de protocolo (http/https), sufixos de domínio (.zendesk.com)
- * e garante que contenha apenas caracteres válidos.
- */
-const zendeskSubdomainSchema = z
-  .string()
-  .trim()
-  .min(1, 'O subdomínio do Zendesk (ZENDESK_SUBDOMAIN) é obrigatório.')
-  .transform(val =>
-    val
-      .replace(/^https?:\/\//i, '')
-      .replace(/\.zendesk\.com.*$/i, '')
-      .replace(/\/+$/, '')
-      .trim()
-  )
-  .pipe(
-    z
-      .string()
-      .regex(
-        /^[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]$/,
-        'O subdomínio do Zendesk deve conter apenas letras, números e hífens (ex: "minhaempresa"). Não informe a URL inteira.'
-      )
-  );
-
-/**
- * Validador da URL base do Chatwoot com normalização de barras finais.
- */
-const chatwootBaseUrlSchema = z
-  .string()
-  .trim()
-  .default('https://app.chatwoot.com')
-  .transform(val => val.replace(/\/+$/, ''))
-  .pipe(z.url('A URL base do Chatwoot (CHATWOOT_BASE_URL) deve ser uma URL válida com http:// ou https://.'));
-
-/**
  * Validador da lista de IDs de chamados (suporta '*' ou lista delimitada por vírgula).
  */
 const migrationTicketIdSchema = z
@@ -75,38 +40,46 @@ const supportedLocales = ['pt-BR', 'en-US', 'pt', 'en'] as const;
 
 // @spec REQ-MIG-001
 const envSchema = z.object({
-  ZENDESK_SUBDOMAIN: zendeskSubdomainSchema,
-  ZENDESK_EMAIL: z
+  ZENDESK_SUBDOMAIN: z
     .string()
     .trim()
-    .min(1, 'O e-mail do Zendesk (ZENDESK_EMAIL) é obrigatório.')
-    .email('O e-mail do Zendesk (ZENDESK_EMAIL) deve ser um endereço de e-mail válido.'),
+    .min(1, 'O subdomínio do Zendesk (ZENDESK_SUBDOMAIN) é obrigatório.')
+    .transform(val =>
+      val
+        .replace(/^https?:\/\//i, '')
+        .replace(/\.zendesk\.com.*$/i, '')
+        .replace(/\/+$/, '')
+        .trim()
+    )
+    .pipe(
+      z
+        .string()
+        .regex(
+          /^[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]$/,
+          'O subdomínio do Zendesk deve conter apenas letras, números e hífens (ex: "minhaempresa"). Não informe a URL inteira.'
+        )
+    ),
+  ZENDESK_EMAIL: z
+    .email('O e-mail do Zendesk (ZENDESK_EMAIL) deve ser um endereço de e-mail válido.')
+    .trim()
+    .min(1, 'O e-mail do Zendesk (ZENDESK_EMAIL) é obrigatório.'),
   ZENDESK_API_TOKEN: z
     .string()
     .trim()
     .min(6, 'O token de API do Zendesk (ZENDESK_API_TOKEN) deve ter pelo menos 6 caracteres.'),
 
-  CHATWOOT_BASE_URL: chatwootBaseUrlSchema,
-  CHATWOOT_API_TOKEN: z
+  CHATWOOT_BASE_URL: z
     .string()
     .trim()
-    .min(6, 'O token de acesso do Chatwoot (CHATWOOT_API_TOKEN) deve ter pelo menos 6 caracteres.'),
-  CHATWOOT_ACCOUNT_ID: z.coerce
-    .number()
-    .int('O ID da conta do Chatwoot deve ser um número inteiro.')
-    .positive('O ID da conta do Chatwoot deve ser um número positivo maior que zero.'),
-  CHATWOOT_INBOX_ID: z.coerce
-    .number()
-    .int('O ID da caixa de entrada do Chatwoot deve ser um número inteiro.')
-    .positive('O ID da caixa de entrada do Chatwoot deve ser um número positivo maior que zero.'),
+    .default('https://app.chatwoot.com')
+    .transform(val => val.replace(/\/+$/, ''))
+    .pipe(z.url('A URL base do Chatwoot (CHATWOOT_BASE_URL) deve ser uma URL válida com http:// ou https://.')),
+  CHATWOOT_API_TOKEN: z.string().trim().min(6),
+  CHATWOOT_ACCOUNT_ID: z.coerce.number().int().positive(),
+  CHATWOOT_INBOX_ID: z.coerce.number().int().positive(),
 
   MIGRATION_TICKET_ID: migrationTicketIdSchema,
-  MIGRATION_BATCH_SIZE: z.coerce
-    .number()
-    .int('MIGRATION_BATCH_SIZE deve ser um número inteiro.')
-    .min(1, 'MIGRATION_BATCH_SIZE deve ser no mínimo 1.')
-    .max(100, 'MIGRATION_BATCH_SIZE não pode ser maior que 100 devido aos limites da API.')
-    .default(25),
+  MIGRATION_BATCH_SIZE: z.coerce.number().int().min(1).max(100).default(25),
   MIGRATION_LOCALE: z.enum(supportedLocales).default('pt-BR'),
   MIGRATION_DRY_RUN: booleanCoerceSchema,
 });
