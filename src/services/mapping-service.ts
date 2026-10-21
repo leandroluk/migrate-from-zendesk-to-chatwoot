@@ -6,14 +6,13 @@ import type {MigrationMappingEntry} from '../types';
 /**
  * Serviço responsável por persistir e gerenciar o mapeamento "de-para"
  * entre chamados do Zendesk e suas respectivas conversas no Chatwoot.
- * Utiliza SQLite nativo (node:sqlite) para operações atômicas, ultrarrápidas em O(1),
- * livres de gargalo de I/O em larga escala, e gera um CSV complementar para conferência humana.
+ * Utiliza exclusivamente SQLite nativo (node:sqlite) para operações atômicas, ultrarrápidas em O(1),
+ * sem nenhum gargalo de I/O em disco ou regravação de arquivos.
  *
  * @spec REQ-MIG-011
  */
 export class MappingService {
   private readonly dbPath: string;
-  private readonly csvPath: string;
   private readonly db: DatabaseSync;
   private readonly insertStmt: StatementSync;
   private readonly selectStmt: StatementSync;
@@ -23,7 +22,7 @@ export class MappingService {
   /**
    * Construtor do MappingService.
    *
-   * @param baseDir Diretório base onde os arquivos de banco e CSV serão gravados (padrão: ./logs).
+   * @param baseDir Diretório base onde o banco SQLite será gravado (padrão: ./logs).
    */
   public constructor(baseDir?: string) {
     const dir = baseDir ?? path.resolve(process.cwd(), 'logs');
@@ -32,7 +31,6 @@ export class MappingService {
     }
 
     this.dbPath = path.join(dir, 'migration.db');
-    this.csvPath = path.join(dir, 'migration-mapping.csv');
     this.migratedSet = new Set<number>();
 
     // Inicialização do SQLite nativo com modo WAL para máxima performance e concorrência
@@ -130,7 +128,7 @@ export class MappingService {
   }
 
   /**
-   * Registra um novo mapeamento de-para de forma atômica no SQLite e acrescenta linha no CSV.
+   * Registra um novo mapeamento de-para de forma atômica exclusivamente no SQLite.
    *
    * @param entry Registro contendo os IDs, URLs e metadados de migração.
    */
@@ -138,7 +136,6 @@ export class MappingService {
     const ticketId = Number(entry.zendeskTicketId);
     this.migratedSet.add(ticketId);
 
-    // 1. Gravação no SQLite
     try {
       this.insertStmt.run(
         ticketId,
@@ -152,38 +149,6 @@ export class MappingService {
       );
     } catch (error) {
       console.error('[MappingService] Erro ao gravar no SQLite:', error);
-    }
-
-    // 2. Gravação de linha adicional no CSV para verificação humana
-    try {
-      const csvExists = fs.existsSync(this.csvPath);
-      let contentToWrite = '';
-
-      if (!csvExists) {
-        contentToWrite +=
-          '"Zendesk Ticket ID","Chatwoot Conversation ID","Assunto","Requisitante","Anexos","URL Zendesk","URL Chatwoot","Data Migração"\n';
-      }
-
-      const escapeCsv = (val: unknown): string => {
-        const str = val === null || val === undefined ? '' : String(val);
-        return `"${str.replace(/"/g, '""')}"`;
-      };
-
-      const row = [
-        entry.zendeskTicketId,
-        entry.chatwootConversationId,
-        escapeCsv(entry.subject),
-        escapeCsv(entry.requesterEmail),
-        entry.attachmentsCount ?? 0,
-        escapeCsv(entry.zendeskUrl),
-        escapeCsv(entry.chatwootUrl),
-        escapeCsv(entry.migratedAt),
-      ].join(',');
-
-      contentToWrite += `${row}\n`;
-      fs.appendFileSync(this.csvPath, contentToWrite, 'utf-8');
-    } catch (error) {
-      console.error('[MappingService] Erro ao gravar migration-mapping.csv:', error);
     }
   }
 
@@ -230,13 +195,10 @@ export class MappingService {
   }
 
   /**
-   * Retorna os caminhos dos arquivos de banco e CSV.
+   * Retorna o caminho do banco SQLite.
    */
-  public getFilePaths(): {dbPath: string; csvPath: string} {
-    return {
-      dbPath: this.dbPath,
-      csvPath: this.csvPath,
-    };
+  public getDbPath(): string {
+    return this.dbPath;
   }
 
   /**
