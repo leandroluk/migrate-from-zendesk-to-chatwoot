@@ -179,27 +179,21 @@ export class MigrationOrchestrator {
    * @param stats Estrutura mutável de estatísticas.
    */
   private async executeBatchLoopMode(stats: MigrationViewStats): Promise<void> {
-    this.ui.logInfo("Modo Lote ativado: Buscando chamados pendentes (sem a tag 'chatwoot')...");
+    this.ui.logInfo('Modo Lote ativado: Varrendo chamados via paginação contínua (cursor-based)...');
 
-    let page = 1;
+    const totalTickets = await this.zendeskClient.getTicketCount();
+    stats.total = totalTickets > 0 ? totalTickets : 100;
+
+    this.ui.logInfo(`Total estimado de chamados no Zendesk: ${totalTickets}`);
+    this.ui.createProgressBar(stats.total, 'Iniciando lote...');
+
+    let cursor: string | undefined = undefined;
     let hasMore = true;
-
-    // Busca preliminar para dimensionar o progresso
-    const initialSearch = await this.zendeskClient.searchTicketsWithoutTag('chatwoot', 1);
-    const totalPending = initialSearch.count;
-    stats.total = totalPending;
-
-    if (totalPending === 0) {
-      this.ui.logDone("Nenhum chamado pendente de migração encontrado! Fila com tag 'chatwoot' já zerada.");
-      return;
-    }
-
-    this.ui.logInfo(`Total de chamados identificados para migração: ${totalPending}`);
-    this.ui.createProgressBar(totalPending, 'Iniciando lote...');
+    const batchSize = Math.min(this.configService.get().MIGRATION_BATCH_SIZE || 100, 100);
 
     while (hasMore) {
-      const searchResult = await this.zendeskClient.searchTicketsWithoutTag('chatwoot', page);
-      const tickets = searchResult.results;
+      const pageResult = await this.zendeskClient.listTicketsCursor(batchSize, cursor);
+      const tickets = pageResult.tickets;
 
       if (!tickets || tickets.length === 0) {
         hasMore = false;
@@ -207,9 +201,18 @@ export class MigrationOrchestrator {
       }
 
       for (const ticket of tickets) {
-        this.ui.updateProgressBar(stats.success + stats.failed, {
+        this.ui.updateProgressBar(stats.success + stats.failed + stats.skipped, {
           status: `Ticket #${ticket.id}`,
         });
+
+        // 1. Verifica se já foi marcado com a tag 'chatwoot' ou se já consta no mapeamento persistente
+        if (
+          !this.configService.isForceUpdate() &&
+          (ticket.tags?.includes('chatwoot') || this.mappingService.isMigrated(ticket.id))
+        ) {
+          stats.skipped++;
+          continue;
+        }
 
         const result = await this.processSingleTicket(ticket);
         if (result === 'migrated') {
@@ -225,14 +228,8 @@ export class MigrationOrchestrator {
         });
       }
 
-      // Se marcamos os chamados com 'chatwoot', na próxima busca eles já não retornam na página 1
-      // Porém, se estiver em dry-run ou para garantir avanço, incrementamos a página se não marcamos tags
-      if (this.configService.get().MIGRATION_DRY_RUN) {
-        page++;
-        if (!searchResult.next_page) {
-          hasMore = false;
-        }
-      }
+      hasMore = Boolean(pageResult.meta?.has_more && pageResult.meta?.after_cursor);
+      cursor = pageResult.meta?.after_cursor;
     }
 
     this.ui.stopProgressBar();
@@ -253,6 +250,11 @@ export class MigrationOrchestrator {
     const isDryRun = this.configService.get().MIGRATION_DRY_RUN;
 
     try {
+      // 0. Se já migrado e não é FORCE_UPDATE, salta imediatamente
+      if (!this.configService.isForceUpdate() && this.mappingService.isMigrated(ticket.id)) {
+        return 'skipped';
+      }
+
       // 1. Obter requisitante no Zendesk
       const requester = await this.zendeskClient.getUser(ticket.requester_id);
 
@@ -269,7 +271,9 @@ export class MigrationOrchestrator {
 
       // 3. Localizar ou cadastrar o contato no Chatwoot
       const defaultClientName = this.dictionaryService.get().roles.defaultClientName;
-      let contact = await this.chatwootClient.findContactByEmail(requester.email);
+      const effectiveName = requester.name || (requester.email ? requester.email.split('@')[0] : defaultClientName);
+      const effectiveEmail = requester.email || `sem-email-${requester.id}@methaenergia.local`;
+      let contact = await this.chatwootClient.findContactByEmail(effectiveEmail);
 
       // 4. Verificação de Idempotência e Anti-Duplicação no Chatwoot
       if (contact) {
@@ -339,8 +343,8 @@ export class MigrationOrchestrator {
       } else {
         contact = await this.chatwootClient.createContact({
           inbox_id: this.chatwootClient.getInboxId(),
-          name: requester.name || requester.email.split('@')[0] || defaultClientName,
-          email: requester.email,
+          name: effectiveName,
+          email: effectiveEmail,
         });
       }
 
@@ -445,8 +449,14 @@ export class MigrationOrchestrator {
         await this.chatwootClient.toggleStatus(conversation.id, conversationStatus);
       }
 
-      // 9. Marcar chamado com a tag 'chatwoot' no Zendesk
-      await this.zendeskClient.addTagToTicket(ticket.id, 'chatwoot');
+      // 9. Marcar chamado com a tag 'chatwoot' no Zendesk (apenas se não estiver fechado, pois tickets fechados são somente-leitura)
+      if (ticket.status !== 'closed') {
+        try {
+          await this.zendeskClient.addTagToTicket(ticket.id, 'chatwoot');
+        } catch (tagError) {
+          this.ui.logWarn(`Não foi possível adicionar a tag 'chatwoot' no chamado #${ticket.id} no Zendesk:`, tagError);
+        }
+      }
 
       // 10. Registrar mapeamento de-para persistente
       const chatwootUrl = this.chatwootClient.getConversationWebUrl(conversation.id);
@@ -455,8 +465,8 @@ export class MigrationOrchestrator {
         chatwootConversationId: conversation.id,
         zendeskUrl: zendeskTicketUrl,
         chatwootUrl,
-        subject: ticket.subject,
-        requesterEmail: requester.email,
+        subject: ticket.subject || 'Sem assunto',
+        requesterEmail: requester.email || 'Sem e-mail',
         attachmentsCount: totalAttachmentsMigrated,
         migratedAt: new Date().toISOString(),
       });

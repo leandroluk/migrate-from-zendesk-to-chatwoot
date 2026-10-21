@@ -121,3 +121,21 @@ export interface ZendeskSearchResponse {
   next_page: string | null;
   previous_page: string | null;
 }
+
+/**
+ * Resposta paginada por cursor da listagem de chamados na API do Zendesk.
+ *
+ * @spec REQ-MIG-005
+ */
+export interface ZendeskCursorTicketsResponse {
+  tickets: ZendeskTicket[];
+  meta: {
+    has_more: boolean;
+    after_cursor?: string;
+    before_cursor?: string;
+  };
+  links: {
+    prev?: string;
+    next?: string;
+  };
+}

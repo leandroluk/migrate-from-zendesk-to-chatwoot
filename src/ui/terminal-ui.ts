@@ -83,7 +83,7 @@ export class TerminalUI {
   public printBanner(): void {
     const pipe = pc.cyan('║');
     console.log('\n' + pc.cyan('╔══════════════════════════════════════════════════════════════╗'));
-    console.log(pipe + pc.bold(pc.white('   MIGRAÇÃO DE CHAMADOS: ZENDESK  ➜  CHATWOOT (Tool)           ')) + pipe);
+    console.log(pipe + pc.bold(pc.white('   MIGRAÇÃO DE CHAMADOS: ZENDESK  ➜  CHATWOOT (Tool)          ')) + pipe);
     console.log(pc.cyan('╚══════════════════════════════════════════════════════════════╝'));
     console.log(pc.dim(`  📄 Logs da sessão gravados em: ${this.logFilePath}\n`));
   }

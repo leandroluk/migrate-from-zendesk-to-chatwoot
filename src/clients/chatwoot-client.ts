@@ -208,35 +208,56 @@ export class ChatwootClient {
 
   /**
    * Localiza um contato no Chatwoot pelo seu endereço de e-mail.
+   * Retorna null de forma resiliente caso o e-mail não seja informado ou a busca não encontre correspondências.
    *
    * @spec REQ-MIG-006
    * @param email E-mail do contato procurado.
    * @returns Contato localizado ou null.
    */
-  public async findContactByEmail(email: string): Promise<ChatwootContact | null> {
-    const endpoint = `/accounts/${this.accountId}/contacts/search?q=${encodeURIComponent(email)}`;
-    const data = await this.request<{payload: ChatwootContact[]}>(endpoint);
-
-    if (data.payload && data.payload.length > 0) {
-      const exactMatch = data.payload.find(c => c.email.toLowerCase() === email.toLowerCase());
-      return exactMatch ?? data.payload[0] ?? null;
+  public async findContactByEmail(email?: string | null): Promise<ChatwootContact | null> {
+    if (!email || !email.trim()) {
+      return null;
     }
-    return null;
+    try {
+      const endpoint = `/accounts/${this.accountId}/contacts/search?q=${encodeURIComponent(email.trim())}`;
+      const data = await this.request<{payload: ChatwootContact[]}>(endpoint);
+
+      if (data.payload && data.payload.length > 0) {
+        const exactMatch = data.payload.find(c => c.email && c.email.toLowerCase() === email.toLowerCase());
+        return exactMatch ?? data.payload[0] ?? null;
+      }
+      return null;
+    } catch {
+      return null;
+    }
   }
 
   /**
    * Cria um novo contato no Chatwoot vinculado à caixa de entrada padrão.
+   * Se o e-mail já estiver cadastrado no Chatwoot ("Email has already been taken"),
+   * recupera e retorna o contato existente de forma transparente e resiliente.
    *
    * @spec REQ-MIG-006
    * @param dto Dados de criação do contato.
-   * @returns Contato recém-criado.
+   * @returns Contato recém-criado ou existente.
    */
   public async createContact(dto: CreateContactDTO): Promise<ChatwootContact> {
-    const data = await this.request<{payload: {contact: ChatwootContact}}>(`/accounts/${this.accountId}/contacts`, {
-      method: 'POST',
-      body: JSON.stringify(dto),
-    });
-    return data.payload.contact;
+    try {
+      const data = await this.request<{payload: {contact: ChatwootContact}}>(`/accounts/${this.accountId}/contacts`, {
+        method: 'POST',
+        body: JSON.stringify(dto),
+      });
+      return data.payload.contact;
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      if (errorMsg.includes('Email has already been taken') && dto.email) {
+        const existing = await this.findContactByEmail(dto.email);
+        if (existing) {
+          return existing;
+        }
+      }
+      throw error;
+    }
   }
 
   /**

@@ -1,6 +1,7 @@
 import type {AppConfig} from '../config';
 import type {
   ZendeskComment,
+  ZendeskCursorTicketsResponse,
   ZendeskCustomRole,
   ZendeskGroup,
   ZendeskSearchResponse,
@@ -191,17 +192,60 @@ export class ZendeskClient {
   }
 
   /**
+   * Obtém uma página de chamados usando paginação por cursor (cursor-based pagination).
+   * Suporta grandes volumes (ex: > 1.000 chamados) sem as limitações da API de busca.
+   *
+   * @spec REQ-MIG-005
+   * @param pageSize Quantidade de itens por página (máximo: 100).
+   * @param cursor Token do cursor para a próxima página (opcional).
+   * @returns Resposta contendo lista de chamados, metadados de cursor e links.
+   */
+  public async listTicketsCursor(pageSize: number = 100, cursor?: string): Promise<ZendeskCursorTicketsResponse> {
+    let endpoint = `/tickets.json?page[size]=${pageSize}`;
+    if (cursor) {
+      endpoint += `&page[after]=${encodeURIComponent(cursor)}`;
+    }
+    return await this.request<ZendeskCursorTicketsResponse>(endpoint);
+  }
+
+  /**
+   * Retorna a contagem total de chamados ativos no Zendesk via /tickets/count.json.
+   *
+   * @spec REQ-MIG-005
+   */
+  public async getTicketCount(): Promise<number> {
+    try {
+      const data = await this.request<{count: {value: number}}>('/tickets/count.json');
+      return data.count?.value ?? 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  /**
    * Adiciona uma tag ao chamado no Zendesk para marcar a conclusão da migração.
+   * Ignora silenciosamente erros HTTP 422 caso o chamado já esteja com status 'closed' (somente leitura).
    *
    * @spec REQ-MIG-007
    * @param ticketId ID do chamado no Zendesk.
    * @param tag Nome da tag a ser anexada (ex: 'chatwoot').
    */
   public async addTagToTicket(ticketId: number, tag: string): Promise<void> {
-    await this.request<{tags: string[]}>(`/tickets/${ticketId}/tags.json`, {
-      method: 'PUT',
-      body: JSON.stringify({tags: [tag]}),
-    });
+    try {
+      await this.request<{tags: string[]}>(`/tickets/${ticketId}/tags.json`, {
+        method: 'PUT',
+        body: JSON.stringify({tags: [tag]}),
+      });
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      if (
+        errorMsg.includes('422') &&
+        (errorMsg.includes('fechado') || errorMsg.includes('closed') || errorMsg.includes('rejeitada'))
+      ) {
+        return;
+      }
+      throw error;
+    }
   }
 
   /**
