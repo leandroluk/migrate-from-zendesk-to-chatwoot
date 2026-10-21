@@ -2,7 +2,7 @@
 
 ## High-Level Architecture
 
-The migration POC follows a modular pipeline pattern:
+The migration tool follows a modular pipeline pattern:
 
 ```
 ┌──────────────┐     ┌──────────────┐     ┌───────────────┐     ┌──────────────┐

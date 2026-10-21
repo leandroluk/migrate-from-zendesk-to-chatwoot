@@ -1,4 +1,4 @@
-# Design: Zendesk to Chatwoot Ticket Migration POC
+# Design: Zendesk to Chatwoot Ticket Migration Tool
 
 ## Architecture Overview
 

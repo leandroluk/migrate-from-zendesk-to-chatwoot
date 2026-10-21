@@ -15,7 +15,7 @@ pnpm run lint
 pnpm run format:check
 ```
 
-## Running the POC
+## Running the tool
 
 ```bash
 # Run in development mode

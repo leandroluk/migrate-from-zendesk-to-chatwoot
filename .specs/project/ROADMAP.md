@@ -1,6 +1,6 @@
 # Roadmap: Zendesk to Chatwoot Migration
 
-## Phase 1: POC Setup & Architecture (Current)
+## Phase 1: Tool Setup & Architecture (Current)
 
 - [x] Base project configuration (TypeScript, oxlint, oxfmt, dotenv, zod)
 - [x] Project specification & design via `graph-spec-design`

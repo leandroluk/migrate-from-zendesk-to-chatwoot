@@ -1,10 +1,10 @@
-# Project: Zendesk to Chatwoot Migration POC
+# Project: Zendesk to Chatwoot Migration Tool
 
 Traceability: on
 
 ## Overview
 
-POC (Proof of Concept) tool to migrate tickets, conversation threads, contacts, and metadata from Zendesk to Chatwoot.
+Tool to migrate tickets, conversation threads, contacts, and metadata from Zendesk to Chatwoot.
 
 ## Objectives
 

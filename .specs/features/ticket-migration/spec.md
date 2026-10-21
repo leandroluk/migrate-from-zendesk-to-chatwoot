@@ -1,8 +1,8 @@
-# Spec: Zendesk to Chatwoot Ticket Migration POC
+# Spec: Zendesk to Chatwoot Ticket Migration Tool
 
 ## Summary
 
-POC (Proof of Concept) em TypeScript orientada a objetos (POO) com JSDocs detalhados em português para migrar chamados do Zendesk para o Chatwoot.
+Ferramenta em TypeScript orientada a objetos (POO) com JSDocs detalhados em português para migrar chamados do Zendesk para o Chatwoot.
 O fluxo valida permissões de acesso em ambas as plataformas, sincroniza "arestas" prévias (tags/rótulos, grupos/equipes e contatos/agentes), oferece modo seguro para validação em produção através de ID único configurado via `.env`, ou executa migração contínua em lote buscando chamados sem a tag `chatwoot` até zerar a fila, com suporte a anexos, marcação de tag no Zendesk e exibição visual de progresso via terminal UI.
 
 ## Referências Oficiais de API

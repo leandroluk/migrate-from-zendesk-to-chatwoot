@@ -1,4 +1,4 @@
-# Tasks: Zendesk to Chatwoot Ticket Migration POC
+# Tasks: Zendesk to Chatwoot Ticket Migration Tool
 
 ### [x] TASK-MIG-001: Implementar ConfigService e validação Zod
 

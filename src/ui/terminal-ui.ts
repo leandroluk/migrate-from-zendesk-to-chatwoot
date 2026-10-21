@@ -81,10 +81,9 @@ export class TerminalUI {
    * Exibe o banner de apresentação do projeto no terminal e o caminho do log.
    */
   public printBanner(): void {
+    const pipe = pc.cyan('║');
     console.log('\n' + pc.cyan('╔══════════════════════════════════════════════════════════════╗'));
-    console.log(
-      pc.cyan('║') + pc.bold(pc.white('   MIGRAÇÃO DE CHAMADOS: ZENDESK  ➜  CHATWOOT (POC)           ')) + pc.cyan('║')
-    );
+    console.log(pipe + pc.bold(pc.white('   MIGRAÇÃO DE CHAMADOS: ZENDESK  ➜  CHATWOOT (Tool)           ')) + pipe);
     console.log(pc.cyan('╚══════════════════════════════════════════════════════════════╝'));
     console.log(pc.dim(`  📄 Logs da sessão gravados em: ${this.logFilePath}\n`));
   }

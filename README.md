@@ -1,4 +1,4 @@
-# Migrador de Chamados: Zendesk ➜ Chatwoot (POC)
+# Migrador de Chamados: Zendesk ➜ Chatwoot Tool
 
 Ferramenta desenvolvida em **TypeScript** orientada a objetos (POO) para realizar a extração, transformação e carga (ETL) de chamados, comentários, anexos e metadados do **Zendesk** para o **Chatwoot**.
 
@@ -40,7 +40,7 @@ Abaixo está o passo a passo detalhado de onde encontrar cada uma das credenciai
    - **Aplicativos e integrações (Apps and integrations)** ➜ **APIs** ➜ **API do Zendesk (Zendesk API)**.
 4. Na aba **Configurações (Settings)**, certifique-se de que a opção **Acesso por token (Token Access)** está **Ativa**.
 5. Clique no botão **Adicionar token de API (Add API token)**.
-6. Dê uma descrição para o token (ex: `Migracao Chatwoot POC`) e clique em **Copiar**.
+6. Dê uma descrição para o token (ex: `Migracao Chatwoot`) e clique em **Copiar**.
    > ⚠️ **Importante**: O Zendesk só exibe o token completo uma única vez no momento da criação. Salve-o imediatamente no `.env`.
 7. Clique em **Salvar**.
 
