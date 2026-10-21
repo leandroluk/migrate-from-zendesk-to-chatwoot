@@ -17,7 +17,12 @@ export const envSchema = z.object({
   MIGRATION_TICKET_ID_LIST: z.string().prefault('*'),
   MIGRATION_BATCH_SIZE: z.coerce.number().int().positive().prefault(25),
   MIGRATION_LOCALE: z.string().prefault('pt-BR'),
-  MIGRATION_DRY_RUN: z.preprocess((v: string) => /^(true|1)$/i.test(v.toLowerCase()), z.boolean()),
+  MIGRATION_DRY_RUN: z
+    .preprocess((v: unknown) => (typeof v === 'string' ? /^(true|1)$/i.test(v.trim()) : Boolean(v)), z.boolean())
+    .prefault(false),
+  MIGRATION_FORCE_UPDATE: z
+    .preprocess((v: unknown) => (typeof v === 'string' ? /^(true|1)$/i.test(v.trim()) : Boolean(v)), z.boolean())
+    .prefault(false),
 });
 
 // @spec REQ-MIG-001
@@ -45,6 +50,10 @@ export class ConfigService {
 
   public get(): AppConfig {
     return this.config;
+  }
+
+  public isForceUpdate(): boolean {
+    return this.config.MIGRATION_FORCE_UPDATE;
   }
 
   public isAllTicketsMode(): boolean {

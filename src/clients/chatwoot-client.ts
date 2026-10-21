@@ -9,6 +9,7 @@ import type {
   CreateContactDTO,
   CreateConversationDTO,
   CreateMessageDTO,
+  MessageAttachmentPayload,
 } from '../types';
 
 /**
@@ -32,7 +33,7 @@ export class ChatwootClient {
    * @param config Configurações validadas do Chatwoot.
    */
   public constructor(config: AppConfig) {
-    this.baseUrl = `${config.CHATWOOT_BASE_URL.replace(/\/+$/, '')}/api/v1`;
+    this.baseUrl = `${new URL(config.CHATWOOT_BASE_URL).origin}/api/v1`;
     this.apiToken = config.CHATWOOT_API_TOKEN;
     this.accountId = config.CHATWOOT_ACCOUNT_ID;
     this.inboxId = config.CHATWOOT_INBOX_ID;
@@ -48,10 +49,17 @@ export class ChatwootClient {
    */
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
-    const headers = {
+    const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+    const defaultHeaders: Record<string, string> = {
       api_access_token: this.apiToken,
-      'Content-Type': 'application/json',
       Accept: 'application/json',
+    };
+    if (!isFormData) {
+      defaultHeaders['Content-Type'] = 'application/json';
+    }
+
+    const headers = {
+      ...defaultHeaders,
       ...options.headers,
     };
 
@@ -70,7 +78,16 @@ export class ChatwootClient {
       throw new Error(`[ChatwootClient] Erro HTTP ${response.status} ao acessar ${endpoint}: ${errorBody}`);
     }
 
-    return (await response.json()) as T;
+    if (response.status === 204 || response.headers.get('content-length') === '0') {
+      return {} as T;
+    }
+
+    const text = await response.text();
+    if (!text || !text.trim()) {
+      return {} as T;
+    }
+
+    return JSON.parse(text) as T;
   }
 
   /**
@@ -223,6 +240,67 @@ export class ChatwootClient {
   }
 
   /**
+   * Busca no Chatwoot se já existe uma conversa registrada para um chamado do Zendesk.
+   * Consulta as conversas vinculadas ao contato e verifica custom_attributes (zendesk_link, zendesk_ticket_id)
+   * e o histórico de mensagens para evitar duplicação de tickets.
+   *
+   * @spec REQ-MIG-006
+   * @spec REQ-MIG-011
+   * @param contactId ID do contato no Chatwoot.
+   * @param zendeskTicketId ID numérico do chamado no Zendesk.
+   * @returns A conversa existente ou null caso não exista.
+   */
+  public async findExistingConversation(
+    contactId: number,
+    zendeskTicketId: number
+  ): Promise<ChatwootConversation | null> {
+    try {
+      const endpoint = `/accounts/${this.accountId}/contacts/${contactId}/conversations`;
+      const raw = await this.request<ChatwootConversation[] | {payload: ChatwootConversation[]}>(endpoint);
+      const conversations = Array.isArray(raw) ? raw : (raw?.payload ?? []);
+
+      // Filtra apenas conversas pertencentes à caixa de entrada da migração
+      const validConversations = conversations.filter(c => !c.inbox_id || c.inbox_id === this.inboxId);
+      const targetIdStr = String(zendeskTicketId);
+
+      for (const conv of validConversations) {
+        const customAttrs = conv.custom_attributes as Record<string, unknown> | undefined;
+
+        // 1. Checagem por zendesk_ticket_id
+        if (customAttrs?.zendesk_ticket_id !== undefined && String(customAttrs.zendesk_ticket_id) === targetIdStr) {
+          return conv;
+        }
+
+        // 2. Checagem por zendesk_link
+        const zendeskLink = customAttrs?.zendesk_link ?? customAttrs?.zendesk_ticket_url;
+        if (
+          typeof zendeskLink === 'string' &&
+          (zendeskLink.endsWith(`/${targetIdStr}`) || zendeskLink.includes(`/tickets/${targetIdStr}`))
+        ) {
+          return conv;
+        }
+
+        // 3. Checagem no histórico de mensagens (se retornado pela API)
+        const messages = (conv as unknown as {messages?: Array<{content?: string}>}).messages;
+        if (Array.isArray(messages)) {
+          const matched = messages.some(
+            m =>
+              typeof m.content === 'string' &&
+              (m.content.includes(`Chamado #${targetIdStr}`) || m.content.includes(`/tickets/${targetIdStr}`))
+          );
+          if (matched) {
+            return conv;
+          }
+        }
+      }
+
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Cria uma nova conversa no Chatwoot para representar um chamado migrado.
    *
    * @spec REQ-MIG-006
@@ -266,16 +344,81 @@ export class ChatwootClient {
 
   /**
    * Registra uma mensagem ou nota privada em uma conversa do Chatwoot.
+   * Suporta envio de arquivos binários anexos via multipart/form-data.
    *
    * @spec REQ-MIG-006
    * @param conversationId ID da conversa de destino.
    * @param dto Dados da mensagem a ser criada.
+   * @param attachments Lista opcional de anexos binários.
    * @returns Mensagem criada.
    */
-  public async createMessage(conversationId: number, dto: CreateMessageDTO): Promise<ChatwootMessage> {
+  public async createMessage(
+    conversationId: number,
+    dto: CreateMessageDTO,
+    attachments?: MessageAttachmentPayload[]
+  ): Promise<ChatwootMessage> {
+    if (attachments && attachments.length > 0) {
+      const formData = new FormData();
+      formData.append('content', dto.content);
+      if (dto.message_type) {
+        formData.append('message_type', dto.message_type);
+      }
+      formData.append('private', String(Boolean(dto.private)));
+      if (dto.content_type) {
+        formData.append('content_type', dto.content_type);
+      }
+      if (dto.content_attributes) {
+        formData.append('content_attributes', JSON.stringify(dto.content_attributes));
+      }
+      for (const att of attachments) {
+        formData.append('attachments[]', att.blob, att.fileName);
+      }
+
+      return await this.request<ChatwootMessage>(
+        `/accounts/${this.accountId}/conversations/${conversationId}/messages`,
+        {
+          method: 'POST',
+          body: formData,
+        }
+      );
+    }
+
     return await this.request<ChatwootMessage>(`/accounts/${this.accountId}/conversations/${conversationId}/messages`, {
       method: 'POST',
       body: JSON.stringify(dto),
+    });
+  }
+
+  /**
+   * Retorna a URL de visualização da conversa no painel do Chatwoot dentro da caixa de entrada configurada.
+   *
+   * @spec REQ-MIG-011
+   * @param conversationId ID da conversa no Chatwoot.
+   * @returns URL web da conversa (ex: https://app.chatwoot.com/app/accounts/1/inbox/1/conversations/100).
+   */
+  public getConversationWebUrl(conversationId: number): string {
+    const rootUrl = this.baseUrl.replace(/\/api\/v1\/?$/, '').replace(/\/+$/, '');
+    return `${rootUrl}/app/accounts/${this.accountId}/inbox/${this.inboxId}/conversations/${conversationId}`;
+  }
+
+  /**
+   * Atualiza os atributos ou status de uma conversa existente no Chatwoot.
+   *
+   * @spec REQ-MIG-006
+   * @spec REQ-MIG-011
+   * @param conversationId ID da conversa no Chatwoot.
+   * @param data Dados para atualização (custom_attributes, status, etc.).
+   */
+  public async updateConversation(
+    conversationId: number,
+    data: {
+      custom_attributes?: Record<string, unknown>;
+      status?: 'open' | 'resolved' | 'pending';
+    }
+  ): Promise<void> {
+    await this.request(`/accounts/${this.accountId}/conversations/${conversationId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
     });
   }
 

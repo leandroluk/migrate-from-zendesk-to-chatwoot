@@ -7,7 +7,7 @@ import pc from 'picocolors';
 /**
  * Interface que define os dados consolidados do resumo de execução da migração.
  */
-export interface MigrationSummaryStats {
+export interface MigrationViewStats {
   total: number;
   success: number;
   failed: number;
@@ -27,10 +27,9 @@ export class TerminalUI {
   private currentSpinner: Ora | null = null;
   private progressBar: cliProgress.SingleBar | null = null;
   private readonly logFilePath: string;
-  private readonly logStream: fs.WriteStream | null = null;
 
   /**
-   * Construtor privado para singleton e inicialização do stream de arquivo de log.
+   * Construtor privado para singleton e inicialização do arquivo de log.
    */
   private constructor() {
     const logsDir = path.resolve(process.cwd(), 'logs');
@@ -39,21 +38,23 @@ export class TerminalUI {
     }
 
     this.logFilePath = path.join(logsDir, 'migration.log');
-    this.logStream = fs.createWriteStream(this.logFilePath, {flags: 'a'});
     this.writeToFile(`\n================ SESSÃO INICIADA: ${new Date().toISOString()} ================`);
   }
 
   /**
-   * Escreve uma entrada de texto formatada no arquivo de log, removendo códigos de cores ANSI.
+   * Escreve uma entrada de texto formatada no arquivo de log de forma síncrona e imediata,
+   * garantindo que nenhum log seja perdido em caso de encerramento inesperado ou interrupção no debug.
    *
    * @param text Texto a ser gravado no log.
    */
   private writeToFile(text: string): void {
-    if (this.logStream) {
+    try {
       // eslint-disable-next-line no-control-regex
       const clean = text.replace(/\x1b\[[0-9;]*m/g, '');
       const timestamp = new Date().toISOString();
-      this.logStream.write(`[${timestamp}] ${clean}\n`);
+      fs.appendFileSync(this.logFilePath, `[${timestamp}] ${clean}\n`, 'utf-8');
+    } catch (error) {
+      console.error('[TerminalUI] Falha ao gravar log:', error);
     }
   }
 
@@ -109,10 +110,10 @@ export class TerminalUI {
    *
    * @param message Mensagem de sucesso opcional.
    */
-  public succeedSpinner(message?: string): void {
+  public doneSpinner(message?: string): void {
     if (this.currentSpinner) {
       const text = message ?? this.currentSpinner.text;
-      this.writeToFile(`[SUCCESS] ${text}`);
+      this.writeToFile(`[DONE] ${text}`);
       this.currentSpinner.succeed(message ? pc.green(message) : undefined);
       this.currentSpinner = null;
     }
@@ -212,8 +213,8 @@ export class TerminalUI {
    *
    * @param message Mensagem de texto.
    */
-  public logSuccess(message: string): void {
-    this.writeToFile(`[SUCCESS] ${message}`);
+  public logDone(message: string): void {
+    this.writeToFile(`[DONE] ${message}`);
     console.log(pc.green('✔ ') + pc.green(message));
   }
 
@@ -221,10 +222,17 @@ export class TerminalUI {
    * Imprime uma mensagem de aviso no console e grava no log.
    *
    * @param message Mensagem de texto.
+   * @param error Objeto ou causa raiz do erro opcional.
    */
-  public logWarning(message: string): void {
-    this.writeToFile(`[WARN] ${message}`);
-    console.log(pc.yellow('⚠ ') + pc.yellow(message));
+  public logWarn(message: string, error?: unknown): void {
+    let details = '';
+    if (error instanceof Error) {
+      details = ` (${error.message})`;
+    } else if (error) {
+      details = ` (${String(error)})`;
+    }
+    this.writeToFile(`[WARN] ${message}${details}`);
+    console.log(pc.yellow('⚠ ') + pc.yellow(message) + (details ? pc.dim(details) : ''));
   }
 
   /**
@@ -262,11 +270,11 @@ export class TerminalUI {
    *
    * @param stats Estatísticas acumuladas da execução.
    */
-  public printSummary(stats: MigrationSummaryStats): void {
+  public printView(stats: MigrationViewStats): void {
     const elapsedSeconds = ((stats.endTime.getTime() - stats.startTime.getTime()) / 1000).toFixed(1);
 
-    const summaryText =
-      `RESUMO DA EXECUÇÃO:\n` +
+    const viewText =
+      `VISÃO GERAL DA EXECUÇÃO:\n` +
       `   - Total avaliado:     ${stats.total}\n` +
       `   - Migrados com êxito: ${stats.success}\n` +
       `   - Falhas/Erros:       ${stats.failed}\n` +
@@ -274,7 +282,7 @@ export class TerminalUI {
       `   - Tempo decorrido:    ${elapsedSeconds}s\n` +
       `   - Arquivo de log:     ${this.logFilePath}`;
 
-    this.writeToFile(`[SUMMARY]\n${summaryText}`);
+    this.writeToFile(`[VIEW]\n${viewText}`);
 
     console.log('\n' + pc.bold(pc.cyan('📊 RESUMO DA EXECUÇÃO:')));
     console.log(pc.white(`   - Total avaliado:     ${stats.total}`));

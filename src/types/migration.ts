@@ -34,3 +34,19 @@ export interface PermissionValidationResult {
   chatwootIsAdmin: boolean;
   errors: string[];
 }
+
+/**
+ * Registro de mapeamento entre um chamado do Zendesk e uma conversa do Chatwoot.
+ *
+ * @spec REQ-MIG-011
+ */
+export interface MigrationMappingEntry {
+  zendeskTicketId: number;
+  chatwootConversationId: number;
+  zendeskUrl: string;
+  chatwootUrl: string;
+  subject: string;
+  requesterEmail: string;
+  attachmentsCount: number;
+  migratedAt: string;
+}

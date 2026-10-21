@@ -65,7 +65,7 @@ export class EdgeMigrationService {
     const customRolesInfo =
       zdCustomRoles.length > 0 ? `, ${zdCustomRoles.length} papéis personalizados identificados.` : '.';
 
-    this.ui.succeedSpinner(
+    this.ui.doneSpinner(
       `Arestas mensuradas: ${zdTags.length} tags (${missingTags.length} ausentes no Chatwoot), ` +
         `${zdGroups.length} grupos (${missingGroups.length} ausentes no Chatwoot)${customRolesInfo}`
     );
@@ -101,7 +101,7 @@ export class EdgeMigrationService {
         await this.chatwootClient.createLabel(tag.name);
         labelsCreated++;
       } catch (err) {
-        this.ui.logWarning(`Não foi possível criar a label '${tag.name}' no Chatwoot: ${String(err)}`);
+        this.ui.logWarn(`Não foi possível criar a label '${tag.name}' no Chatwoot: ${String(err)}`);
       }
     }
 
@@ -111,11 +111,11 @@ export class EdgeMigrationService {
         await this.chatwootClient.createTeam(group.name, group.description);
         teamsCreated++;
       } catch (err) {
-        this.ui.logWarning(`Não foi possível criar a equipe '${group.name}' no Chatwoot: ${String(err)}`);
+        this.ui.logWarn(`Não foi possível criar a equipe '${group.name}' no Chatwoot: ${String(err)}`);
       }
     }
 
-    this.ui.succeedSpinner(
+    this.ui.doneSpinner(
       `Arestas migradas no Chatwoot com sucesso: ${labelsCreated} labels e ${teamsCreated} equipes criadas.`
     );
 

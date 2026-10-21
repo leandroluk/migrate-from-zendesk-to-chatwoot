@@ -79,3 +79,23 @@
 - **Depends on**: TASK-MIG-001, TASK-MIG-002, TASK-MIG-004, TASK-MIG-005, TASK-MIG-006, TASK-MIG-007
 - **Done when**: O projeto roda via `pnpm run dev`, compila no `pnpm run build`, e passa em `pnpm run lint` e `pnpm run format:check`.
 - **Gate**: `pnpm run build && pnpm run lint && pnpm run format:check`
+
+### [x] TASK-MIG-011: Implementar MappingService para Registro De-Para JSON e CSV
+
+- **REQ**: REQ-MIG-011
+- **Symbols**: MappingService, MigrationMappingEntry
+- **What**: Implementar classe `MappingService` para persistir registro de-para atômico em `logs/migration-mapping.json` e `logs/migration-mapping.csv` correlacionando IDs, URLs de acesso direto ao Zendesk e Chatwoot, solicitante, assunto e quantidade de anexos.
+- **Where**: `src/services/mapping-service.ts`, `src/types/index.ts`
+- **Depends on**: TASK-MIG-008
+- **Done when**: Chamados migrados geram linhas atualizadas no JSON e CSV.
+- **Gate**: `pnpm run build && pnpm run lint`
+
+### [x] TASK-MIG-012: Implementar Download e Upload Binário Multipart de Anexos
+
+- **REQ**: REQ-MIG-006, REQ-MIG-011
+- **Symbols**: ZendeskClient.downloadAttachment, ChatwootClient.createMessage
+- **What**: Implementar download autenticado de anexos no ZendeskClient (com tratamento de redirecionamento S3 sem vazar cabeçalho Authorization), envio via `multipart/form-data` com `attachments[]` no ChatwootClient, e orquestração do download/upload dentro do MigrationOrchestrator com inclusão de link Zendesk na mensagem inicial e custom_attributes.
+- **Where**: `src/clients/zendesk-client.ts`, `src/clients/chatwoot-client.ts`, `src/services/migration-orchestrator.ts`, `src/mappers/ticket-mapper.ts`
+- **Depends on**: TASK-MIG-011
+- **Done when**: Imagens são salvas diretamente no Chatwoot com visualização nativa na conversa.
+- **Gate**: `pnpm run build && pnpm run lint && pnpm run format:check`

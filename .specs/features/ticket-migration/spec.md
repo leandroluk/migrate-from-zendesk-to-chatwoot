@@ -37,13 +37,14 @@ O fluxo valida permissões de acesso em ambas as plataformas, sincroniza "aresta
   - Buscar chamados no Zendesk que **não** possuam a tag `chatwoot` (utilizando query de busca `/api/v2/search.json?query=type:ticket -tags:chatwoot`).
   - Iterar paginadamente até que não haja mais chamados pendentes (fila zerada).
 
-- REQ-MIG-006: Extração Completa e Cadastro no Chatwoot (Passo 5 do fluxo).
+- REQ-MIG-006: Extração Completa, Upload de Anexos e Cadastro no Chatwoot (Passo 5 do fluxo).
   Para cada chamado:
   - Extrair o objeto completo do chamado (assunto, descrição, prioridade, status, datas, requisitante).
   - Extrair comentários (`/api/v2/tickets/{id}/comments.json`) e todos os anexos (arquivos, URLs, derivados).
+  - Fazer download autenticado dos binários de anexos do Zendesk (lidando com redirecionamentos S3).
   - Criar/localizar o contato do requisitante no Chatwoot (`GET/POST /api/v1/accounts/{id}/contacts`).
-  - Criar a conversa no Chatwoot (`POST /api/v1/accounts/{id}/conversations`) com os metadados e tags correspondentes.
-  - Inserir mensagens históricas (`POST /api/v1/accounts/{id}/conversations/{id}/messages`) respeitando visibilidade pública ou nota interna (`private: true`), e registrando metadados originais de autoria e anexos.
+  - Criar a conversa no Chatwoot (`POST /api/v1/accounts/{id}/conversations`) com os metadados, links e tags correspondentes.
+  - Inserir mensagens históricas (`POST /api/v1/accounts/{id}/conversations/{id}/messages`) respeitando visibilidade pública ou nota interna (`private: true`), metadados originais de autoria e upload de anexos via multipart/form-data (`attachments[]`).
 
 - REQ-MIG-007: Marcação de Tag no Zendesk e Continuidade do Loop (Passo 5 do fluxo).
   Após a criação bem-sucedida da conversa no Chatwoot:
@@ -59,16 +60,24 @@ O fluxo valida permissões de acesso em ambas as plataformas, sincroniza "aresta
 - REQ-MIG-009: Arquitetura POO e Documentação JSDoc em Português.
   O código deve ser estritamente estruturado em classes orientadas a objetos com separação clara de responsabilidades (clients, services, mappers, UI, validators) e conter JSDocs explicativos em português brasileiro em todas as classes, métodos e interfaces.
 
+- REQ-MIG-010: Logging Persistente Estruturado.
+  Gravar todas as mensagens e etapas em `logs/migration.log` (ignorado no git) sem caracteres ANSI de formatação.
+
+- REQ-MIG-011: Registro Persistente de Mapeamento De-Para e Links Cruzados (Zendesk <-> Chatwoot).
+  - Manter registro persistente estruturado de cada chamado migrado em `logs/migration-mapping.json` e `logs/migration-mapping.csv` correlacionando IDs, URLs diretas, solicitante e data.
+  - Inserir link direto para o chamado no Zendesk na conversa e nos atributos personalizados no Chatwoot (`custom_attributes.zendesk_ticket_url`).
+
 ## Affected Components (from graph)
 
 - `src/config/env.ts` — Validação e parsing de variáveis de ambiente [REQ-MIG-001]
-- `src/ui/terminal-ui.ts` — Renderizador de interface do terminal (spinners, progress bar, alerts) [REQ-MIG-008]
-- `src/clients/zendesk-client.ts` — Cliente HTTP Zendesk para tickets, comentários, tags, grupos, permissões [REQ-MIG-002, REQ-MIG-003, REQ-MIG-004, REQ-MIG-005, REQ-MIG-007]
-- `src/clients/chatwoot-client.ts` — Cliente HTTP Chatwoot para contatos, conversas, mensagens, tags, times [REQ-MIG-002, REQ-MIG-003, REQ-MIG-006]
-- `src/mappers/ticket-mapper.ts` — Mapeador de dados, status, comentários e anexos [REQ-MIG-006]
+- `src/ui/terminal-ui.ts` — Renderizador de interface do terminal (spinners, progress bar, alerts) [REQ-MIG-008, REQ-MIG-010]
+- `src/clients/zendesk-client.ts` — Cliente HTTP Zendesk para tickets, comentários, tags, grupos, download de anexos, permissões [REQ-MIG-002, REQ-MIG-003, REQ-MIG-004, REQ-MIG-005, REQ-MIG-006, REQ-MIG-007, REQ-MIG-011]
+- `src/clients/chatwoot-client.ts` — Cliente HTTP Chatwoot para contatos, conversas, mensagens multipart, tags, times [REQ-MIG-002, REQ-MIG-003, REQ-MIG-006, REQ-MIG-011]
+- `src/mappers/ticket-mapper.ts` — Mapeador de dados, status, comentários e anexos [REQ-MIG-006, REQ-MIG-011]
+- `src/services/mapping-service.ts` — Serviço de persistência do de-para entre Zendesk e Chatwoot [REQ-MIG-011]
 - `src/services/permission-service.ts` — Validação ativa de permissões em ambas as plataformas [REQ-MIG-002]
 - `src/services/edge-migration-service.ts` — Mensuração e migração de tags, grupos e dependências prévias [REQ-MIG-003]
-- `src/services/migration-orchestrator.ts` — Orquestrador principal com controle de fluxo seguro e loop [REQ-MIG-004, REQ-MIG-005, REQ-MIG-006, REQ-MIG-007]
+- `src/services/migration-orchestrator.ts` — Orquestrador principal com controle de fluxo seguro e loop [REQ-MIG-004, REQ-MIG-005, REQ-MIG-006, REQ-MIG-007, REQ-MIG-011]
 - `src/index.ts` — Ponto de entrada CLI e inicialização dos serviços [REQ-MIG-009]
 
 ## Out of Scope

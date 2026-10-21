@@ -83,7 +83,7 @@ export class PermissionService {
       this.ui.failSpinner('Falha na verificação de permissões.');
       errors.forEach(err => this.ui.logError(err));
     } else {
-      this.ui.succeedSpinner('Autenticação e permissões confirmadas no Zendesk e Chatwoot!');
+      this.ui.doneSpinner('Autenticação e permissões confirmadas no Zendesk e Chatwoot!');
     }
 
     return result;

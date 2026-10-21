@@ -36,6 +36,7 @@ export const ptBRDictionary: MigrationDictionary = {
     attachmentsHeader: '\n\n📎 Anexos originais do chamado:',
     attachmentItem: (fileName, sizeKb, url) => `\n • ${fileName} (${sizeKb} KB) - ${url}`,
     initialTicketHeader: id => `🎫 Chamado #${id} migrado do Zendesk`,
+    zendeskUrlLabel: 'Link no Zendesk',
     subjectLabel: 'Assunto',
     requesterLabel: 'Requisitante',
     originalDateLabel: 'Abertura original',

@@ -2,9 +2,10 @@ import {ChatwootClient, ZendeskClient} from '../clients';
 import {ConfigService} from '../config';
 import {DictionaryService} from '../dictionaries';
 import {TicketMapper} from '../mappers';
-import type {ZendeskTicket} from '../types';
-import {TerminalUI, type MigrationSummaryStats} from '../ui';
+import type {MessageAttachmentPayload, ZendeskTicket} from '../types';
+import {TerminalUI, type MigrationViewStats} from '../ui';
 import {EdgeMigrationService} from './edge-migration-service';
+import {MappingService} from './mapping-service';
 import {PermissionService} from './permission-service';
 
 /**
@@ -21,6 +22,7 @@ import {PermissionService} from './permission-service';
  * @spec REQ-MIG-006
  * @spec REQ-MIG-007
  * @spec REQ-MIG-008
+ * @spec REQ-MIG-011
  */
 export class MigrationOrchestrator {
   private readonly configService: ConfigService;
@@ -28,6 +30,7 @@ export class MigrationOrchestrator {
   private readonly chatwootClient: ChatwootClient;
   private readonly permissionService: PermissionService;
   private readonly edgeMigrationService: EdgeMigrationService;
+  private readonly mappingService: MappingService;
   private readonly dictionaryService: DictionaryService;
   private readonly ui: TerminalUI;
 
@@ -43,6 +46,7 @@ export class MigrationOrchestrator {
     this.chatwootClient = new ChatwootClient(config);
     this.permissionService = new PermissionService(this.zendeskClient, this.chatwootClient);
     this.edgeMigrationService = new EdgeMigrationService(this.zendeskClient, this.chatwootClient);
+    this.mappingService = new MappingService();
     this.ui = TerminalUI.getInstance();
   }
 
@@ -58,7 +62,7 @@ export class MigrationOrchestrator {
 
     const config = this.configService.get();
     if (config.MIGRATION_DRY_RUN) {
-      this.ui.logWarning('MODO DRY-RUN ATIVADO: Nenhuma gravação real será feita no Chatwoot ou Zendesk.');
+      this.ui.logWarn('MODO DRY-RUN ATIVADO: Nenhuma gravação real será feita no Chatwoot ou Zendesk.');
     }
 
     // PASSO 1: Autenticação e Verificação de Permissões
@@ -77,7 +81,7 @@ export class MigrationOrchestrator {
     }
 
     // PASSO 3 & 4: Execução por ID Seguro (Passo 3) ou Loop Contínuo (Passo 4)
-    const stats: MigrationSummaryStats = {
+    const stats: MigrationViewStats = {
       total: 0,
       success: 0,
       failed: 0,
@@ -94,7 +98,7 @@ export class MigrationOrchestrator {
     }
 
     stats.endTime = new Date();
-    this.ui.printSummary(stats);
+    this.ui.printView(stats);
   }
 
   /**
@@ -104,7 +108,7 @@ export class MigrationOrchestrator {
    * @param targetIds Lista de IDs de chamados informados via .env.
    * @param stats Estrutura mutável de estatísticas.
    */
-  private async executeExplicitTicketsMode(targetIds: number[], stats: MigrationSummaryStats): Promise<void> {
+  private async executeExplicitTicketsMode(targetIds: number[], stats: MigrationViewStats): Promise<void> {
     stats.total = targetIds.length;
 
     if (targetIds.length === 1) {
@@ -144,19 +148,21 @@ export class MigrationOrchestrator {
       }
 
       if (!useProgressBar) {
-        this.ui.succeedSpinner(`Chamado #${ticketId} localizado com sucesso (Assunto: "${ticket.subject}").`);
+        this.ui.doneSpinner(`Chamado #${ticketId} localizado com sucesso (Assunto: "${ticket.subject}").`);
       }
 
-      const success = await this.processSingleTicket(ticket);
-      if (success) {
+      const result = await this.processSingleTicket(ticket);
+      if (result === 'migrated') {
         stats.success++;
+      } else if (result === 'skipped') {
+        stats.skipped++;
       } else {
         stats.failed++;
       }
 
       if (useProgressBar) {
-        this.ui.updateProgressBar(stats.success + stats.failed, {
-          status: `Ticket #${ticketId} concluído`,
+        this.ui.updateProgressBar(stats.success + stats.failed + stats.skipped, {
+          status: `Ticket #${ticketId} processado`,
         });
       }
     }
@@ -172,7 +178,7 @@ export class MigrationOrchestrator {
    * @spec REQ-MIG-005
    * @param stats Estrutura mutável de estatísticas.
    */
-  private async executeBatchLoopMode(stats: MigrationSummaryStats): Promise<void> {
+  private async executeBatchLoopMode(stats: MigrationViewStats): Promise<void> {
     this.ui.logInfo("Modo Lote ativado: Buscando chamados pendentes (sem a tag 'chatwoot')...");
 
     let page = 1;
@@ -184,7 +190,7 @@ export class MigrationOrchestrator {
     stats.total = totalPending;
 
     if (totalPending === 0) {
-      this.ui.logSuccess("Nenhum chamado pendente de migração encontrado! Fila com tag 'chatwoot' já zerada.");
+      this.ui.logDone("Nenhum chamado pendente de migração encontrado! Fila com tag 'chatwoot' já zerada.");
       return;
     }
 
@@ -205,15 +211,17 @@ export class MigrationOrchestrator {
           status: `Ticket #${ticket.id}`,
         });
 
-        const success = await this.processSingleTicket(ticket);
-        if (success) {
+        const result = await this.processSingleTicket(ticket);
+        if (result === 'migrated') {
           stats.success++;
+        } else if (result === 'skipped') {
+          stats.skipped++;
         } else {
           stats.failed++;
         }
 
-        this.ui.updateProgressBar(stats.success + stats.failed, {
-          status: `Ticket #${ticket.id} concluído`,
+        this.ui.updateProgressBar(stats.success + stats.failed + stats.skipped, {
+          status: `Ticket #${ticket.id} processado`,
         });
       }
 
@@ -228,7 +236,7 @@ export class MigrationOrchestrator {
     }
 
     this.ui.stopProgressBar();
-    this.ui.logSuccess('Processamento do lote finalizado com sucesso.');
+    this.ui.logDone('Processamento do lote finalizado com sucesso.');
   }
 
   /**
@@ -237,30 +245,98 @@ export class MigrationOrchestrator {
    *
    * @spec REQ-MIG-006
    * @spec REQ-MIG-007
+   * @spec REQ-MIG-011
    * @param ticket Chamado do Zendesk a ser migrado.
-   * @returns true se migrado com sucesso; false em caso de falha.
+   * @returns 'migrated' se criado com sucesso, 'skipped' se já existia e não duplicou, 'failed' em caso de erro.
    */
-  private async processSingleTicket(ticket: ZendeskTicket): Promise<boolean> {
+  private async processSingleTicket(ticket: ZendeskTicket): Promise<'migrated' | 'skipped' | 'failed'> {
     const isDryRun = this.configService.get().MIGRATION_DRY_RUN;
 
     try {
       // 1. Obter requisitante no Zendesk
       const requester = await this.zendeskClient.getUser(ticket.requester_id);
 
-      // 2. Obter comentários e anexos vinculados
+      // 2. Obter comentários, anexos e link direto no Zendesk
       const comments = await this.zendeskClient.getTicketComments(ticket.id);
+      const zendeskTicketUrl = this.zendeskClient.getTicketWebUrl(ticket.id);
 
       if (isDryRun) {
         this.ui.logInfo(
           `[DRY-RUN] Simulado: Chamado #${ticket.id} ("${ticket.subject}") -> Requisitante: ${requester.email}, ${comments.length} comentários.`
         );
-        return true;
+        return 'migrated';
       }
 
       // 3. Localizar ou cadastrar o contato no Chatwoot
       const defaultClientName = this.dictionaryService.get().roles.defaultClientName;
       let contact = await this.chatwootClient.findContactByEmail(requester.email);
-      if (!contact) {
+
+      // 4. Verificação de Idempotência e Anti-Duplicação no Chatwoot
+      if (contact) {
+        const existingConversation = await this.chatwootClient.findExistingConversation(contact.id, ticket.id);
+        if (existingConversation) {
+          const existingChatwootUrl = this.chatwootClient.getConversationWebUrl(existingConversation.id);
+
+          if (!this.configService.isForceUpdate()) {
+            this.ui.logWarn(
+              `Chamado #${ticket.id} já existe no Chatwoot (Conversa #${existingConversation.id}). Ignorando duplicação.\n` +
+                `    Chatwoot: ${existingChatwootUrl}\n` +
+                `    Zendesk:  ${zendeskTicketUrl}\n` +
+                `    (Para forçar atualização de atributos, defina MIGRATION_FORCE_UPDATE=true no .env)`
+            );
+
+            // Garante que o mapeamento está registrado no CSV e JSON
+            this.mappingService.recordMapping({
+              zendeskTicketId: ticket.id,
+              chatwootConversationId: existingConversation.id,
+              zendeskUrl: zendeskTicketUrl,
+              chatwootUrl: existingChatwootUrl,
+              subject: ticket.subject,
+              requesterEmail: requester.email,
+              attachmentsCount: 0,
+              migratedAt: new Date().toISOString(),
+            });
+
+            return 'skipped';
+          }
+
+          // Se FORCE_UPDATE=true, ATUALIZAMOS a conversa existente SEM criar uma nova duplicada
+          this.ui.logInfo(
+            `[FORCE-UPDATE] Chamado #${ticket.id} já existia (Conversa #${existingConversation.id}). Atualizando atributos na conversa existente sem duplicar...`
+          );
+
+          await this.chatwootClient.updateConversation(existingConversation.id, {
+            custom_attributes: {
+              zendesk_link: zendeskTicketUrl,
+              zendesk_ticket_id: ticket.id,
+              zendesk_ticket_url: zendeskTicketUrl,
+              zendesk_original_status: ticket.status,
+              assunto_do_ticket: ticket.subject,
+            },
+          });
+
+          if (ticket.tags && ticket.tags.length > 0) {
+            await this.chatwootClient.addLabelsToConversation(existingConversation.id, ticket.tags);
+          }
+
+          this.mappingService.recordMapping({
+            zendeskTicketId: ticket.id,
+            chatwootConversationId: existingConversation.id,
+            zendeskUrl: zendeskTicketUrl,
+            chatwootUrl: existingChatwootUrl,
+            subject: ticket.subject,
+            requesterEmail: requester.email,
+            attachmentsCount: 0,
+            migratedAt: new Date().toISOString(),
+          });
+
+          this.ui.logDone(
+            `Conversa existente #${existingConversation.id} atualizada com sucesso (zendesk_link e tags sincronizados, sem duplicação)!`
+          );
+
+          return 'migrated';
+        }
+      } else {
         contact = await this.chatwootClient.createContact({
           inbox_id: this.chatwootClient.getInboxId(),
           name: requester.name || requester.email.split('@')[0] || defaultClientName,
@@ -268,15 +344,18 @@ export class MigrationOrchestrator {
         });
       }
 
-      // 4. Criar a conversa no Chatwoot
+      // 5. Criar a conversa no Chatwoot com custom_attribute zendesk_link
       const conversationStatus = TicketMapper.mapStatus(ticket.status);
       const conversation = await this.chatwootClient.createConversation({
         inbox_id: this.chatwootClient.getInboxId(),
         contact_id: contact.id,
         status: conversationStatus,
         custom_attributes: {
+          zendesk_link: zendeskTicketUrl,
           zendesk_ticket_id: ticket.id,
+          zendesk_ticket_url: zendeskTicketUrl,
           zendesk_original_status: ticket.status,
+          assunto_do_ticket: ticket.subject,
         },
       });
 
@@ -285,22 +364,80 @@ export class MigrationOrchestrator {
         await this.chatwootClient.addLabelsToConversation(conversation.id, ticket.tags);
       }
 
-      // 6. Mensagem inicial com descrição e metadados
-      const initialMessageContent = TicketMapper.generateInitialConversationMessage(ticket, requester);
+      // 6. Nota interna inicial com metadados do chamado e link do Zendesk
+      const hasComments = comments && comments.length > 0;
+      const initialMessageContent = TicketMapper.generateInitialConversationMessage(
+        ticket,
+        requester,
+        zendeskTicketUrl,
+        !hasComments
+      );
       await this.chatwootClient.createMessage(conversation.id, {
         content: initialMessageContent,
-        message_type: 'incoming',
-        private: false,
+        private: true,
       });
 
-      // 7. Replay cronológico de comentários e anexos
+      // 7. Replay cronológico de comentários e anexos binários
+      let totalAttachmentsMigrated = 0;
       for (const comment of comments) {
         const author = await this.zendeskClient.getUser(comment.author_id);
         const roleName = await this.zendeskClient.resolveUserRoleName(author, r =>
           this.dictionaryService.getRoleLabel(r)
         );
-        const messageDto = TicketMapper.toChatwootMessageDTO(comment, author, roleName);
-        await this.chatwootClient.createMessage(conversation.id, messageDto);
+
+        // Download dos binários de anexos do Zendesk (regulares e imagens inline)
+        const allAttachments = TicketMapper.extractAllAttachments(comment);
+        const attachmentPayloads: MessageAttachmentPayload[] = [];
+        if (allAttachments.length > 0) {
+          for (const att of allAttachments) {
+            try {
+              const blob = await this.zendeskClient.downloadAttachment(att.contentUrl);
+              if (blob) {
+                attachmentPayloads.push({
+                  blob,
+                  fileName: att.fileName,
+                });
+                totalAttachmentsMigrated++;
+              } else {
+                this.ui.logWarn(
+                  `Não foi possível baixar o binário do anexo '${att.fileName}' no Zendesk. Ele será referenciado como link.`
+                );
+              }
+            } catch (attError) {
+              this.ui.logWarn(`Erro ao baixar anexo '${att.fileName}':`, attError);
+            }
+          }
+        }
+
+        // Se algum download falhou, ativamos links de fallback no corpo da mensagem
+        const hasFailedAttachments = allAttachments.length > 0 && attachmentPayloads.length < allAttachments.length;
+
+        const messageDto = TicketMapper.toChatwootMessageDTO(
+          comment,
+          author,
+          roleName,
+          hasFailedAttachments,
+          ticket.subject,
+          requester.email
+        );
+
+        try {
+          await this.chatwootClient.createMessage(conversation.id, messageDto, attachmentPayloads);
+        } catch (msgError) {
+          this.ui.logWarn(
+            `Falha ao postar anexo na mensagem do comentário #${comment.id}. Tentando envio textual de fallback...`,
+            msgError
+          );
+          const fallbackDto = TicketMapper.toChatwootMessageDTO(
+            comment,
+            author,
+            roleName,
+            true,
+            ticket.subject,
+            requester.email
+          );
+          await this.chatwootClient.createMessage(conversation.id, fallbackDto);
+        }
       }
 
       // 8. Ajustar status final caso necessário
@@ -311,10 +448,30 @@ export class MigrationOrchestrator {
       // 9. Marcar chamado com a tag 'chatwoot' no Zendesk
       await this.zendeskClient.addTagToTicket(ticket.id, 'chatwoot');
 
-      return true;
+      // 10. Registrar mapeamento de-para persistente
+      const chatwootUrl = this.chatwootClient.getConversationWebUrl(conversation.id);
+      this.mappingService.recordMapping({
+        zendeskTicketId: ticket.id,
+        chatwootConversationId: conversation.id,
+        zendeskUrl: zendeskTicketUrl,
+        chatwootUrl,
+        subject: ticket.subject,
+        requesterEmail: requester.email,
+        attachmentsCount: totalAttachmentsMigrated,
+        migratedAt: new Date().toISOString(),
+      });
+
+      this.ui.logDone(
+        `Chamado #${ticket.id} migrado com sucesso -> Chatwoot Conversa #${conversation.id}\n` +
+          `    Chatwoot: ${chatwootUrl}\n` +
+          `    Zendesk:  ${zendeskTicketUrl}\n` +
+          `    Anexos migrados: ${totalAttachmentsMigrated}`
+      );
+
+      return 'migrated';
     } catch (error) {
       this.ui.logError(`Falha ao processar chamado #${ticket.id}:`, error);
-      return false;
+      return 'failed';
     }
   }
 }

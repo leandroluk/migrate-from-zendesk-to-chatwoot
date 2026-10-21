@@ -110,4 +110,16 @@ export interface CreateMessageDTO {
   content: string;
   message_type?: 'incoming' | 'outgoing';
   private?: boolean;
+  content_type?: 'text' | 'incoming_email' | string;
+  content_attributes?: Record<string, unknown>;
+}
+
+/**
+ * Estrutura para anexo de mensagem a ser enviado via multipart/form-data.
+ *
+ * @spec REQ-MIG-006
+ */
+export interface MessageAttachmentPayload {
+  blob: Blob;
+  fileName: string;
 }

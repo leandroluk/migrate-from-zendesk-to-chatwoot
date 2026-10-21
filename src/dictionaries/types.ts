@@ -35,6 +35,7 @@ export interface MigrationDictionary {
     attachmentsHeader: string;
     attachmentItem: (fileName: string, sizeKb: string, url: string) => string;
     initialTicketHeader: (id: number) => string;
+    zendeskUrlLabel: string;
     subjectLabel: string;
     requesterLabel: string;
     originalDateLabel: string;

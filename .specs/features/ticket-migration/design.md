@@ -26,6 +26,7 @@ flowchart TD
     subgraph Services ["Serviços de Domínio"]
         PermService["PermissionService\n(Passo 1: Validação de Acessos)"]
         EdgeService["EdgeMigrationService\n(Passo 2: Mensuração e Criação de Arestas)"]
+        MappingService["MappingService\n(Registro De-Para JSON & CSV e URLs)"]
         Orchestrator["MigrationOrchestrator\n(Passos 3, 4 e 5: Modo Seguro, Loop e Migração)"]
     end
 
@@ -39,6 +40,7 @@ flowchart TD
 
     Orchestrator --> PermService
     Orchestrator --> EdgeService
+    Orchestrator --> MappingService
     Orchestrator --> ZDClient
     Orchestrator --> CWClient
     Orchestrator --> Mapper
@@ -98,10 +100,13 @@ flowchart TD
   - `getTicket(id: number): Promise<ZendeskTicket | null>`
   - `getTicketComments(ticketId: number): Promise<ZendeskComment[]>`
   - `getUser(userId: number): Promise<ZendeskUser>`
+  - `downloadAttachment(contentUrl: string): Promise<Blob | null>`
+  - `getTicketWebUrl(ticketId: number): string`
   - `listTags(): Promise<ZendeskTag[]>`
   - `listGroups(): Promise<ZendeskGroup[]>`
   - `searchTicketsWithoutTag(tag: string, page?: number): Promise<ZendeskSearchResponse>`
   - `addTagToTicket(ticketId: number, tag: string): Promise<void>`
+  - `removeTagFromTicket(ticketId: number, tag: string): Promise<void>`
 
 ### 4. `ChatwootClient` (`src/clients/chatwoot-client.ts`)
 
@@ -115,8 +120,9 @@ flowchart TD
   - `findContactByEmail(email: string): Promise<ChatwootContact | null>`
   - `createContact(data: CreateContactDTO): Promise<ChatwootContact>`
   - `createConversation(data: CreateConversationDTO): Promise<ChatwootConversation>`
-  - `createMessage(conversationId: number, data: CreateMessageDTO): Promise<ChatwootMessage>`
+  - `createMessage(conversationId: number, data: CreateMessageDTO, attachments?: MessageAttachmentPayload[]): Promise<ChatwootMessage>`
   - `toggleStatus(conversationId: number, status: string): Promise<void>`
+  - `getConversationWebUrl(conversationId: number): string`
 
 ### 5. `PermissionService` (`src/services/permission-service.ts`)
 
@@ -131,7 +137,15 @@ flowchart TD
   - `assessEdges(): Promise<EdgeAssessmentResult>`
   - `migrateEdges(assessment: EdgeAssessmentResult): Promise<EdgeMigrationResult>`
 
-### 7. `TicketMapper` (`src/mappers/ticket-mapper.ts`)
+### 7. `MappingService` (`src/services/mapping-service.ts`)
+
+- **Responsabilidade**: Persiste de forma atômica e estruturada o de-para de chamados migrados (`logs/migration-mapping.json` e `logs/migration-mapping.csv`).
+- **Métodos**:
+  - `recordMapping(entry: MigrationMappingEntry): void`
+  - `getMapping(zendeskTicketId: number): MigrationMappingEntry | undefined`
+  - `getAllMappings(): MigrationMappingEntry[]`
+
+### 8. `TicketMapper` (`src/mappers/ticket-mapper.ts`)
 
 - **Responsabilidade**: Converte entidades do Zendesk para o formato esperado pelo Chatwoot.
 - **Métodos**:

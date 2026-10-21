@@ -12,6 +12,18 @@ export interface ZendeskAttachment {
 }
 
 /**
+ * Anexo unificado extraído de um comentário (seja anexo regular ou imagem inline).
+ *
+ * @spec REQ-MIG-006
+ */
+export interface ExtractedAttachment {
+  fileName: string;
+  contentUrl: string;
+  contentType?: string;
+  isInline: boolean;
+}
+
+/**
  * Representa um comentário em um chamado do Zendesk.
  *
  * @spec REQ-MIG-006

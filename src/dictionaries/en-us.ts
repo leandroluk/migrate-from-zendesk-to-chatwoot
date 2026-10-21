@@ -36,6 +36,7 @@ export const enUSDictionary: MigrationDictionary = {
     attachmentsHeader: '\n\n📎 Original ticket attachments:',
     attachmentItem: (fileName, sizeKb, url) => `\n • ${fileName} (${sizeKb} KB) - ${url}`,
     initialTicketHeader: id => `🎫 Ticket #${id} migrated from Zendesk`,
+    zendeskUrlLabel: 'Zendesk Link',
     subjectLabel: 'Subject',
     requesterLabel: 'Requester',
     originalDateLabel: 'Original creation',

@@ -48,12 +48,12 @@ Abaixo está o passo a passo detalhado de onde encontrar cada uma das credenciai
 
 ### 2. Variáveis do Chatwoot
 
-| Variável              | Exemplo                    | Como Obter no Chatwoot                                                                                                                                                                                             |
-| --------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `CHATWOOT_BASE_URL`   | `https://app.chatwoot.com` | Se você usa o Chatwoot Cloud, use `https://app.chatwoot.com`. Se você usa uma instalação própria (self-hosted), use a URL da sua instância (ex: `https://chatwoot.suaempresa.com`). Não inclua barra `/` no final. |
-| `CHATWOOT_API_TOKEN`  | `qW3eR5tY...`              | O token de acesso pessoal do usuário Administrador da conta (instruções abaixo).                                                                                                                                   |
-| `CHATWOOT_ACCOUNT_ID` | `1`                        | O ID numérico da conta dentro do Chatwoot (instruções abaixo).                                                                                                                                                     |
-| `CHATWOOT_INBOX_ID`   | `1`                        | O ID da caixa de entrada de destino onde as conversas serão criadas (instruções abaixo).                                                                                                                           |
+| Variável              | Exemplo                    | Como Obter no Chatwoot                                                                                                                                                              |
+| --------------------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CHATWOOT_BASE_URL`   | `https://app.chatwoot.com` | Se você usa o Chatwoot Cloud, use `https://app.chatwoot.com`. Se você usa uma instalação própria (self-hosted), use a URL da sua instância (ex: `https://chatwoot.suaempresa.com`). |
+| `CHATWOOT_API_TOKEN`  | `qW3eR5tY...`              | O token de acesso pessoal do usuário Administrador da conta (instruções abaixo).                                                                                                    |
+| `CHATWOOT_ACCOUNT_ID` | `1`                        | O ID numérico da conta dentro do Chatwoot (instruções abaixo).                                                                                                                      |
+| `CHATWOOT_INBOX_ID`   | `1`                        | O ID da caixa de entrada de destino onde as conversas serão criadas (instruções abaixo).                                                                                            |
 
 #### 🛠️ Como Obter o `CHATWOOT_API_TOKEN`:
 

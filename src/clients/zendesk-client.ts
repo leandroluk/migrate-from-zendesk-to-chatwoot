@@ -31,7 +31,7 @@ export class ZendeskClient {
    * @param config Objeto com configurações de subdomínio, e-mail e token.
    */
   public constructor(config: AppConfig) {
-    const rawUrl = config.ZENDESK_BASE_URL.replace(/\/+$/, '');
+    const rawUrl = new URL(config.ZENDESK_BASE_URL).origin;
     this.baseUrl = rawUrl.endsWith('/api/v2') ? rawUrl : `${rawUrl}/api/v2`;
     const credentials = Buffer.from(`${config.ZENDESK_EMAIL}/token:${config.ZENDESK_API_TOKEN}`).toString('base64');
     this.authHeader = `Basic ${credentials}`;
@@ -248,5 +248,84 @@ export class ZendeskClient {
     }
 
     return user.role.charAt(0).toUpperCase() + user.role.slice(1);
+  }
+
+  /**
+   * Faz o download binário de um anexo do Zendesk com autenticação.
+   * Lida adequadamente com redirecionamentos (302) para storage externo (ex: Amazon S3),
+   * garantindo que cabeçalhos de autenticação básica não sejam enviados para hosts externos
+   * onde causariam erros de autorização.
+   *
+   * @spec REQ-MIG-006
+   * @param contentUrl URL completa de download do anexo no Zendesk.
+   * @returns O Blob contendo os dados do arquivo ou null em caso de falha.
+   */
+  public async downloadAttachment(contentUrl: string): Promise<Blob | null> {
+    try {
+      // 1. Tenta requisitar a URL do Zendesk com redirect manual para checar redirecionamento ao S3
+      const initialResponse = await fetch(contentUrl, {
+        method: 'GET',
+        headers: {
+          Authorization: this.authHeader,
+        },
+        redirect: 'manual',
+      });
+
+      let targetUrl = contentUrl;
+      let sendAuth = true;
+
+      if ([301, 302, 303, 307, 308].includes(initialResponse.status)) {
+        const location = initialResponse.headers.get('location');
+        if (location) {
+          targetUrl = location;
+          // URLs pré-assinadas da Amazon S3 / CDN rejeitam Basic Auth adicional
+          sendAuth = false;
+        }
+      }
+
+      const headers: Record<string, string> = {};
+      if (sendAuth) {
+        headers.Authorization = this.authHeader;
+      }
+
+      const response = await fetch(targetUrl, {
+        method: 'GET',
+        headers,
+      });
+
+      if (!response.ok) {
+        return null;
+      }
+
+      return await response.blob();
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Retorna a URL completa de visualização do chamado no painel do Zendesk.
+   *
+   * @spec REQ-MIG-011
+   * @param ticketId ID do chamado no Zendesk.
+   * @returns URL web do chamado para agentes.
+   */
+  public getTicketWebUrl(ticketId: number): string {
+    const rootUrl = this.baseUrl.replace(/\/api\/v2\/?$/, '');
+    return `${rootUrl}/agent/tickets/${ticketId}`;
+  }
+
+  /**
+   * Remove uma tag de um chamado no Zendesk.
+   *
+   * @spec REQ-MIG-007
+   * @param ticketId ID do chamado.
+   * @param tag Nome da tag a ser removida.
+   */
+  public async removeTagFromTicket(ticketId: number, tag: string): Promise<void> {
+    await this.request<{tags: string[]}>(`/tickets/${ticketId}/tags.json`, {
+      method: 'DELETE',
+      body: JSON.stringify({tags: [tag]}),
+    });
   }
 }
