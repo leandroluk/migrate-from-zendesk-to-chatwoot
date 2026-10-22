@@ -26,6 +26,7 @@ export class TerminalUI {
   private static instance: TerminalUI | null = null;
   private currentSpinner: Ora | null = null;
   private progressBar: cliProgress.SingleBar | null = null;
+  private isProgressBarOnCurrentLine = false;
   private readonly logFilePath: string;
 
   /**
@@ -171,6 +172,7 @@ export class TerminalUI {
     );
 
     this.progressBar.start(total, 0, {status: title});
+    this.isProgressBarOnCurrentLine = true;
     return this.progressBar;
   }
 
@@ -183,6 +185,7 @@ export class TerminalUI {
   public updateProgressBar(current: number, tokens?: Record<string, unknown>): void {
     if (this.progressBar) {
       this.progressBar.update(current, tokens);
+      this.isProgressBarOnCurrentLine = true;
     }
   }
 
@@ -193,7 +196,19 @@ export class TerminalUI {
     if (this.progressBar) {
       this.progressBar.stop();
       this.progressBar = null;
+      this.isProgressBarOnCurrentLine = false;
       this.writeToFile('[PROGRESS_END]');
+    }
+  }
+
+  /**
+   * Quebra de linha preventiva caso a barra de progresso esteja ativa na linha corrente,
+   * evitando que mensagens de log fiquem coladas ao lado direito da barra.
+   */
+  private breakLineIfProgressBarActive(): void {
+    if (this.isProgressBarOnCurrentLine) {
+      process.stdout.write('\n');
+      this.isProgressBarOnCurrentLine = false;
     }
   }
 
@@ -203,6 +218,7 @@ export class TerminalUI {
    * @param message Mensagem de texto.
    */
   public logInfo(message: string): void {
+    this.breakLineIfProgressBarActive();
     this.writeToFile(`[INFO] ${message}`);
     console.log(pc.blue('ℹ ') + pc.white(message));
   }
@@ -213,6 +229,7 @@ export class TerminalUI {
    * @param message Mensagem de texto.
    */
   public logDone(message: string): void {
+    this.breakLineIfProgressBarActive();
     this.writeToFile(`[DONE] ${message}`);
     console.log(pc.green('✔ ') + pc.green(message));
   }
@@ -224,6 +241,7 @@ export class TerminalUI {
    * @param error Objeto ou causa raiz do erro opcional.
    */
   public logWarn(message: string, error?: unknown): void {
+    this.breakLineIfProgressBarActive();
     let details = '';
     if (error instanceof Error) {
       details = ` (${error.message})`;
@@ -241,6 +259,7 @@ export class TerminalUI {
    * @param error Objeto ou causa raiz do erro.
    */
   public logError(message: string, error?: unknown): void {
+    this.breakLineIfProgressBarActive();
     let details = '';
     if (error instanceof Error) {
       details = `\n  Detalhes: ${error.message}`;
