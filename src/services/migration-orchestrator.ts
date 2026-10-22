@@ -281,15 +281,21 @@ export class MigrationOrchestrator {
         if (existingConversation) {
           const existingChatwootUrl = this.chatwootClient.getConversationWebUrl(existingConversation.id);
 
-          if (!this.configService.isForceUpdate()) {
+          // Valida se a conversa existente no Chatwoot está COMPLETA (possui todos os comentários)
+          // Mensagens do tipo 2 são eventos de atividade de sistema (adicionar tags, reabertura, etc)
+          const existingMessages = await this.chatwootClient.getConversationMessages(existingConversation.id);
+          const realMessages = existingMessages.filter(m => m.message_type !== 2);
+          const isComplete = comments.length === 0 || realMessages.length >= comments.length;
+
+          if (isComplete && !this.configService.isForceUpdate()) {
             this.ui.logWarn(
-              `Chamado #${ticket.id} já existe no Chatwoot (Conversa #${existingConversation.id}). Ignorando duplicação.\n` +
+              `Chamado #${ticket.id} já existe COMPLETO no Chatwoot (Conversa #${existingConversation.id}). Ignorando duplicação.\n` +
                 `    Chatwoot: ${existingChatwootUrl}\n` +
                 `    Zendesk:  ${zendeskTicketUrl}\n` +
                 `    (Para forçar atualização de atributos, defina MIGRATION_FORCE_UPDATE=true no .env)`
             );
 
-            // Garante que o mapeamento está registrado no CSV e JSON
+            // Garante que o mapeamento está registrado no SQLite
             this.mappingService.recordMapping({
               zendeskTicketId: ticket.id,
               chatwootConversationId: existingConversation.id,
@@ -304,41 +310,48 @@ export class MigrationOrchestrator {
             return 'skipped';
           }
 
-          // Se FORCE_UPDATE=true, ATUALIZAMOS a conversa existente SEM criar uma nova duplicada
-          this.ui.logInfo(
-            `[FORCE-UPDATE] Chamado #${ticket.id} já existia (Conversa #${existingConversation.id}). Atualizando atributos na conversa existente sem duplicar...`
-          );
+          if (!isComplete) {
+            this.ui.logWarn(
+              `Chamado #${ticket.id} possuía conversa #${existingConversation.id} INCOMPLETA no Chatwoot (${realMessages.length}/${comments.length} comentários). Removendo conversa parcial para remigração íntegra...`
+            );
+            await this.chatwootClient.deleteConversation(existingConversation.id);
+          } else {
+            // Se FORCE_UPDATE=true e a conversa já está completa, atualiza atributos na existente
+            this.ui.logInfo(
+              `[FORCE-UPDATE] Chamado #${ticket.id} já existia (Conversa #${existingConversation.id}). Atualizando atributos na conversa existente sem duplicar...`
+            );
 
-          await this.chatwootClient.updateConversation(existingConversation.id, {
-            custom_attributes: {
-              zendesk_link: zendeskTicketUrl,
-              zendesk_ticket_id: ticket.id,
-              zendesk_ticket_url: zendeskTicketUrl,
-              zendesk_original_status: ticket.status,
-              assunto_do_ticket: ticket.subject,
-            },
-          });
+            await this.chatwootClient.updateConversation(existingConversation.id, {
+              custom_attributes: {
+                zendesk_link: zendeskTicketUrl,
+                zendesk_ticket_id: ticket.id,
+                zendesk_ticket_url: zendeskTicketUrl,
+                zendesk_original_status: ticket.status,
+                assunto_do_ticket: ticket.subject,
+              },
+            });
 
-          if (ticket.tags && ticket.tags.length > 0) {
-            await this.chatwootClient.addLabelsToConversation(existingConversation.id, ticket.tags);
+            if (ticket.tags && ticket.tags.length > 0) {
+              await this.chatwootClient.addLabelsToConversation(existingConversation.id, ticket.tags);
+            }
+
+            this.mappingService.recordMapping({
+              zendeskTicketId: ticket.id,
+              chatwootConversationId: existingConversation.id,
+              zendeskUrl: zendeskTicketUrl,
+              chatwootUrl: existingChatwootUrl,
+              subject: ticket.subject,
+              requesterEmail: requester.email,
+              attachmentsCount: 0,
+              migratedAt: new Date().toISOString(),
+            });
+
+            this.ui.logDone(
+              `Conversa existente #${existingConversation.id} atualizada com sucesso (zendesk_link e tags sincronizados, sem duplicação)!`
+            );
+
+            return 'migrated';
           }
-
-          this.mappingService.recordMapping({
-            zendeskTicketId: ticket.id,
-            chatwootConversationId: existingConversation.id,
-            zendeskUrl: zendeskTicketUrl,
-            chatwootUrl: existingChatwootUrl,
-            subject: ticket.subject,
-            requesterEmail: requester.email,
-            attachmentsCount: 0,
-            migratedAt: new Date().toISOString(),
-          });
-
-          this.ui.logDone(
-            `Conversa existente #${existingConversation.id} atualizada com sucesso (zendesk_link e tags sincronizados, sem duplicação)!`
-          );
-
-          return 'migrated';
         }
       } else {
         contact = await this.chatwootClient.createContact({

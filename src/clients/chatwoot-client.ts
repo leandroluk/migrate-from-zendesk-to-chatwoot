@@ -322,6 +322,42 @@ export class ChatwootClient {
   }
 
   /**
+   * Obtém as mensagens existentes de uma conversa no Chatwoot para verificação de integridade.
+   *
+   * @spec REQ-MIG-006
+   * @param conversationId ID da conversa no Chatwoot.
+   * @returns Lista de mensagens existentes na conversa.
+   */
+  public async getConversationMessages(
+    conversationId: number
+  ): Promise<Array<{id: number; message_type: number; content?: string}>> {
+    try {
+      const endpoint = `/accounts/${this.accountId}/conversations/${conversationId}/messages`;
+      const data = await this.request<{payload: Array<{id: number; message_type: number; content?: string}>}>(endpoint);
+      return data.payload ?? [];
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Exclui uma conversa no Chatwoot. Utilizado para limpar conversas incompletas decorrentes
+   * de falhas anteriores antes de realizar a remigração íntegra.
+   *
+   * @spec REQ-MIG-006
+   * @param conversationId ID da conversa no Chatwoot.
+   */
+  public async deleteConversation(conversationId: number): Promise<void> {
+    try {
+      await this.request(`/accounts/${this.accountId}/conversations/${conversationId}`, {
+        method: 'DELETE',
+      });
+    } catch {
+      // Ignora silenciosamente se o recurso já foi removido
+    }
+  }
+
+  /**
    * Cria uma nova conversa no Chatwoot para representar um chamado migrado.
    *
    * @spec REQ-MIG-006
