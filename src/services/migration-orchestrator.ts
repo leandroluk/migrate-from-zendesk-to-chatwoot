@@ -212,11 +212,10 @@ export class MigrationOrchestrator {
           status: `Ticket #${ticket.id}`,
         });
 
-        // 1. Verifica se já foi marcado com a tag 'chatwoot' ou se já consta no mapeamento persistente
-        if (
-          !this.configService.isForceUpdate() &&
-          (ticket.tags?.includes('chatwoot') || this.mappingService.isMigrated(ticket.id))
-        ) {
+        // 1. Verifica se já consta no mapeamento persistente SQLite
+        const isMapped = this.mappingService.isMigrated(ticket.id);
+
+        if (!this.configService.isForceUpdate() && isMapped) {
           // Se já migrado mas ainda com atributos desatualizados, sincroniza os custom_attributes na conversa existente
           if (!this.mappingService.isAttributesSynced(ticket.id)) {
             const chatwootConvId = this.mappingService.getConversationId(ticket.id);
