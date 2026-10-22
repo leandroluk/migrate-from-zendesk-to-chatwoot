@@ -64,6 +64,8 @@ export class DictionaryService {
         return this.activeDictionary.roles.agent;
       case 'end-user':
         return this.activeDictionary.roles.endUser;
+      case 'system':
+        return this.activeDictionary.roles.system ?? 'Sistema';
       default:
         return role.charAt(0).toUpperCase() + role.slice(1);
     }

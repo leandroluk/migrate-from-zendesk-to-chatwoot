@@ -21,6 +21,17 @@ import type {
  * @spec REQ-MIG-007
  */
 export class ZendeskClient {
+  /**
+   * Objeto sintético para representar o sistema ou automações do Zendesk (ID -1 ou <= 0).
+   */
+  private static readonly SYSTEM_USER: ZendeskUser = {
+    id: -1,
+    name: 'Sistema Zendesk',
+    email: 'sistema@zendesk.local',
+    role: 'admin',
+    active: true,
+  };
+
   private readonly baseUrl: string;
   private readonly authHeader: string;
   private readonly userCache: Map<number, ZendeskUser> = new Map();
@@ -135,20 +146,41 @@ export class ZendeskClient {
 
   /**
    * Obtém os dados de um usuário pelo ID, mantendo cache em memória para evitar requisições redundantes.
+   * Lida de forma resiliente com usuários de sistema (ID <= 0 ou -1) e usuários excluídos ou inválidos (404/400).
    *
    * @spec REQ-MIG-006
    * @param userId ID do usuário no Zendesk.
    * @returns Objeto com dados do usuário.
    */
-  public async getUser(userId: number): Promise<ZendeskUser> {
+  public async getUser(userId?: number | null): Promise<ZendeskUser> {
+    if (!userId || userId <= 0 || Number.isNaN(userId)) {
+      return ZendeskClient.SYSTEM_USER;
+    }
+
     const cached = this.userCache.get(userId);
     if (cached) {
       return cached;
     }
 
-    const data = await this.request<{user: ZendeskUser}>(`/users/${userId}.json`);
-    this.userCache.set(userId, data.user);
-    return data.user;
+    try {
+      const data = await this.request<{user: ZendeskUser}>(`/users/${userId}.json`);
+      this.userCache.set(userId, data.user);
+      return data.user;
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      if (errorMsg.includes('404') || errorMsg.includes('400')) {
+        const fallbackUser: ZendeskUser = {
+          id: userId,
+          name: `Usuário Zendesk #${userId}`,
+          email: `usuario-${userId}@zendesk.local`,
+          role: 'end-user',
+          active: false,
+        };
+        this.userCache.set(userId, fallbackUser);
+        return fallbackUser;
+      }
+      throw error;
+    }
   }
 
   /**
@@ -277,6 +309,10 @@ export class ZendeskClient {
    * @returns Nome do papel resolvido (ex: "Suporte N2", "Administrador", etc.).
    */
   public async resolveUserRoleName(user: ZendeskUser, fallbackFn?: (role: string) => string): Promise<string> {
+    if (!user.id || user.id <= 0) {
+      return 'Sistema';
+    }
+
     if (user.custom_role_id) {
       if (this.customRolesCache.size === 0) {
         await this.listCustomRoles();

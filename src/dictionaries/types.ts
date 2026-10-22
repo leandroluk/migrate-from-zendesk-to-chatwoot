@@ -12,6 +12,7 @@ export interface MigrationDictionary {
     agent: string;
     endUser: string;
     defaultClientName: string;
+    system?: string;
   };
 
   priorities: {

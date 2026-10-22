@@ -13,6 +13,7 @@ export const ptBRDictionary: MigrationDictionary = {
     agent: 'Agente',
     endUser: 'Cliente',
     defaultClientName: 'Cliente',
+    system: 'Sistema',
   },
 
   priorities: {

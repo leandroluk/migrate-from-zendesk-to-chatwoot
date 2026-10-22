@@ -13,6 +13,7 @@ export const enUSDictionary: MigrationDictionary = {
     agent: 'Agent',
     endUser: 'Customer',
     defaultClientName: 'Customer',
+    system: 'System',
   },
 
   priorities: {
