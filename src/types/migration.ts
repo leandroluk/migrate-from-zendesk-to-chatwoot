@@ -1,4 +1,4 @@
-import type {ZendeskGroup, ZendeskTag} from './zendesk';
+import type {ZendeskGroup, ZendeskTag, ZendeskTicketField} from './zendesk';
 
 /**
  * Resultado do levantamento de arestas pré-requisito (Passo 2).
@@ -8,8 +8,12 @@ import type {ZendeskGroup, ZendeskTag} from './zendesk';
 export interface EdgeAssessmentResult {
   tags: ZendeskTag[];
   groups: ZendeskGroup[];
+  customAttributes: ZendeskTicketField[];
+  fieldIdToChatwootKey: Map<number, string>;
+  fieldsMap: Map<number, ZendeskTicketField>;
   missingLabelsCount: number;
   missingTeamsCount: number;
+  missingAttributesCount: number;
 }
 
 /**
@@ -20,6 +24,9 @@ export interface EdgeAssessmentResult {
 export interface EdgeMigrationResult {
   labelsCreated: number;
   teamsCreated: number;
+  attributesCreated: number;
+  fieldIdToChatwootKey: Map<number, string>;
+  fieldsMap: Map<number, ZendeskTicketField>;
 }
 
 /**

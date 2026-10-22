@@ -22,6 +22,7 @@ O fluxo valida permissões de acesso em ambas as plataformas, sincroniza "aresta
   Mensurar e listar dependências do Zendesk antes de criar chamados:
   - Tags do Zendesk (`GET /api/v2/tags.json`) -> Criar Labels equivalentes no Chatwoot (`POST /api/v1/accounts/{id}/labels`).
   - Grupos do Zendesk (`GET /api/v2/groups.json`) -> Criar/Mapear Teams (equipes) no Chatwoot (`POST /api/v1/accounts/{id}/teams`).
+  - Atributos Personalizados (`GET /api/v2/ticket_fields.json`) -> Criar/Mapear definições de Custom Attributes de Conversa no Chatwoot (`GET/POST /api/v1/accounts/{id}/custom_attribute_definitions`).
   - Requisitantes e Agentes -> Sincronizar perfis de contatos/usuários no Chatwoot.
     Se alguma dessas arestas não existir no Chatwoot, criá-la antes de migrar os tickets.
 

@@ -123,3 +123,33 @@ export interface MessageAttachmentPayload {
   blob: Blob;
   fileName: string;
 }
+
+/**
+ * Representa uma definição de atributo personalizado (Custom Attribute Definition) no Chatwoot.
+ *
+ * @spec REQ-MIG-003
+ */
+export interface ChatwootCustomAttributeDefinition {
+  id: number;
+  attribute_display_name: string;
+  attribute_display_type: 'text' | 'number' | 'currency' | 'percent' | 'link' | 'date' | 'list' | 'checkbox';
+  attribute_description?: string | null;
+  attribute_key: string;
+  attribute_model: 'conversation_attribute' | 'contact_attribute';
+  attribute_values?: string[];
+  default_value?: unknown;
+}
+
+/**
+ * Parâmetros para criação de uma definição de atributo personalizado no Chatwoot.
+ *
+ * @spec REQ-MIG-003
+ */
+export interface CreateCustomAttributeDefinitionDTO {
+  attribute_display_name: string;
+  attribute_display_type: 'text' | 'number' | 'currency' | 'percent' | 'link' | 'date' | 'list' | 'checkbox';
+  attribute_description?: string;
+  attribute_key: string;
+  attribute_model: 'conversation_attribute' | 'contact_attribute';
+  attribute_values?: string[];
+}

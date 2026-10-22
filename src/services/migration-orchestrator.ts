@@ -2,7 +2,7 @@ import {ChatwootClient, ZendeskClient} from '../clients';
 import {ConfigService} from '../config';
 import {DictionaryService} from '../dictionaries';
 import {TicketMapper} from '../mappers';
-import type {MessageAttachmentPayload, ZendeskTicket} from '../types';
+import type {MessageAttachmentPayload, ZendeskTicket, ZendeskTicketField} from '../types';
 import {TerminalUI, type MigrationViewStats} from '../ui';
 import {EdgeMigrationService} from './edge-migration-service';
 import {MappingService} from './mapping-service';
@@ -12,7 +12,7 @@ import {PermissionService} from './permission-service';
  * Orquestrador principal da migração de chamados do Zendesk para o Chatwoot.
  * Coordena todos os 5 passos do fluxo:
  * 1. Autenticação e validação de permissões;
- * 2. Mensuração e migração de arestas (tags e grupos);
+ * 2. Mensuração e migração de arestas (tags, grupos e atributos personalizados);
  * 3. Validação do modo seguro para chamado único por ID em produção;
  * 4. Loop paginado de busca para chamados sem a tag 'chatwoot';
  * 5. Extração completa, criação no Chatwoot, marcação de tag no Zendesk e exibição de progresso.
@@ -33,6 +33,8 @@ export class MigrationOrchestrator {
   private readonly mappingService: MappingService;
   private readonly dictionaryService: DictionaryService;
   private readonly ui: TerminalUI;
+  private fieldIdToChatwootKey = new Map<number, string>();
+  private fieldsMap = new Map<number, ZendeskTicketField>();
 
   /**
    * Construtor que inicializa todos os clientes e serviços dependentes.
@@ -74,8 +76,13 @@ export class MigrationOrchestrator {
 
     // PASSO 2: Mensuração e Migração de Arestas Pré-requisito
     const edgeAssessment = await this.edgeMigrationService.assessEdges();
+    this.fieldIdToChatwootKey = edgeAssessment.fieldIdToChatwootKey;
+    this.fieldsMap = edgeAssessment.fieldsMap;
+
     if (!config.MIGRATION_DRY_RUN) {
-      await this.edgeMigrationService.migrateEdges(edgeAssessment);
+      const edgeResult = await this.edgeMigrationService.migrateEdges(edgeAssessment);
+      this.fieldIdToChatwootKey = edgeResult.fieldIdToChatwootKey;
+      this.fieldsMap = edgeResult.fieldsMap;
     } else {
       this.ui.logInfo('[DRY-RUN] Criação de arestas no Chatwoot saltada.');
     }
@@ -210,6 +217,25 @@ export class MigrationOrchestrator {
           !this.configService.isForceUpdate() &&
           (ticket.tags?.includes('chatwoot') || this.mappingService.isMigrated(ticket.id))
         ) {
+          // Se já migrado mas ainda com atributos desatualizados, sincroniza os custom_attributes na conversa existente
+          if (!this.mappingService.isAttributesSynced(ticket.id)) {
+            const chatwootConvId = this.mappingService.getConversationId(ticket.id);
+            if (chatwootConvId) {
+              const customAttributes = TicketMapper.mapCustomAttributes(
+                ticket,
+                this.fieldsMap,
+                this.fieldIdToChatwootKey,
+                this.zendeskClient.getTicketWebUrl(ticket.id)
+              );
+              try {
+                await this.chatwootClient.updateConversationCustomAttributes(chatwootConvId, customAttributes);
+                this.mappingService.markAttributesSynced(ticket.id);
+              } catch (attrErr) {
+                this.ui.logWarn(`Falha ao sincronizar atributos do chamado #${ticket.id}:`, attrErr);
+              }
+            }
+          }
+
           stats.skipped++;
           continue;
         }
@@ -250,8 +276,26 @@ export class MigrationOrchestrator {
     const isDryRun = this.configService.get().MIGRATION_DRY_RUN;
 
     try {
-      // 0. Se já migrado e não é FORCE_UPDATE, salta imediatamente
+      // 0. Se já migrado e não é FORCE_UPDATE, confere atributos e salta imediatamente
       if (!this.configService.isForceUpdate() && this.mappingService.isMigrated(ticket.id)) {
+        if (!this.mappingService.isAttributesSynced(ticket.id)) {
+          const chatwootConvId = this.mappingService.getConversationId(ticket.id);
+          if (chatwootConvId) {
+            const zendeskTicketUrl = this.zendeskClient.getTicketWebUrl(ticket.id);
+            const customAttributes = TicketMapper.mapCustomAttributes(
+              ticket,
+              this.fieldsMap,
+              this.fieldIdToChatwootKey,
+              zendeskTicketUrl
+            );
+            try {
+              await this.chatwootClient.updateConversationCustomAttributes(chatwootConvId, customAttributes);
+              this.mappingService.markAttributesSynced(ticket.id);
+            } catch (attrErr) {
+              this.ui.logWarn(`Falha ao sincronizar atributos do chamado #${ticket.id}:`, attrErr);
+            }
+          }
+        }
         return 'skipped';
       }
 
@@ -288,6 +332,22 @@ export class MigrationOrchestrator {
           const isComplete = comments.length === 0 || realMessages.length >= comments.length;
 
           if (isComplete && !this.configService.isForceUpdate()) {
+            // Se o chamado já está completo mas com atributos ainda não sincronizados:
+            if (!this.mappingService.isAttributesSynced(ticket.id)) {
+              const customAttributes = TicketMapper.mapCustomAttributes(
+                ticket,
+                this.fieldsMap,
+                this.fieldIdToChatwootKey,
+                zendeskTicketUrl
+              );
+              try {
+                await this.chatwootClient.updateConversationCustomAttributes(existingConversation.id, customAttributes);
+                this.mappingService.markAttributesSynced(ticket.id);
+              } catch (attrErr) {
+                this.ui.logWarn(`Falha ao sincronizar atributos do chamado #${ticket.id}:`, attrErr);
+              }
+            }
+
             this.ui.logWarn(
               `Chamado #${ticket.id} já existe COMPLETO no Chatwoot (Conversa #${existingConversation.id}). Ignorando duplicação.\n` +
                 `    Chatwoot: ${existingChatwootUrl}\n` +
@@ -321,14 +381,15 @@ export class MigrationOrchestrator {
               `[FORCE-UPDATE] Chamado #${ticket.id} já existia (Conversa #${existingConversation.id}). Atualizando atributos na conversa existente sem duplicar...`
             );
 
+            const customAttributes = TicketMapper.mapCustomAttributes(
+              ticket,
+              this.fieldsMap,
+              this.fieldIdToChatwootKey,
+              zendeskTicketUrl
+            );
+
             await this.chatwootClient.updateConversation(existingConversation.id, {
-              custom_attributes: {
-                zendesk_link: zendeskTicketUrl,
-                zendesk_ticket_id: ticket.id,
-                zendesk_ticket_url: zendeskTicketUrl,
-                zendesk_original_status: ticket.status,
-                assunto_do_ticket: ticket.subject,
-              },
+              custom_attributes: customAttributes,
             });
 
             if (ticket.tags && ticket.tags.length > 0) {
@@ -361,19 +422,19 @@ export class MigrationOrchestrator {
         });
       }
 
-      // 5. Criar a conversa no Chatwoot com custom_attribute zendesk_link
+      // 5. Criar a conversa no Chatwoot com custom_attributes mapeados
       const conversationStatus = TicketMapper.mapStatus(ticket.status);
+      const customAttributes = TicketMapper.mapCustomAttributes(
+        ticket,
+        this.fieldsMap,
+        this.fieldIdToChatwootKey,
+        zendeskTicketUrl
+      );
       const conversation = await this.chatwootClient.createConversation({
         inbox_id: this.chatwootClient.getInboxId(),
         contact_id: contact.id,
         status: conversationStatus,
-        custom_attributes: {
-          zendesk_link: zendeskTicketUrl,
-          zendesk_ticket_id: ticket.id,
-          zendesk_ticket_url: zendeskTicketUrl,
-          zendesk_original_status: ticket.status,
-          assunto_do_ticket: ticket.subject,
-        },
+        custom_attributes: customAttributes,
       });
 
       // 5. Vincular tags/labels na conversa

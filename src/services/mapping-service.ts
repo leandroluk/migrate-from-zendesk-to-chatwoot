@@ -17,7 +17,10 @@ export class MappingService {
   private readonly insertStmt: StatementSync;
   private readonly selectStmt: StatementSync;
   private readonly countStmt: StatementSync;
+  private readonly updateSyncedStmt: StatementSync;
   private readonly migratedSet: Set<number>;
+  private readonly attributesSyncedSet = new Set<number>();
+  private readonly conversationIdMap = new Map<number, number>();
 
   /**
    * Construtor do MappingService.
@@ -52,6 +55,13 @@ export class MappingService {
       CREATE INDEX IF NOT EXISTS idx_chatwoot_conv ON migration_mappings(chatwoot_conversation_id);
     `);
 
+    // Migração de schema defensiva: adiciona coluna attributes_synced caso ainda não exista
+    try {
+      this.db.exec('ALTER TABLE migration_mappings ADD COLUMN attributes_synced INTEGER DEFAULT 0;');
+    } catch {
+      // Coluna já existe no banco
+    }
+
     // Prepared statements para máxima velocidade de execução
     this.insertStmt = this.db.prepare(`
       INSERT OR REPLACE INTO migration_mappings (
@@ -62,13 +72,18 @@ export class MappingService {
         attachments_count,
         zendesk_url,
         chatwoot_url,
-        migrated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        migrated_at,
+        attributes_synced
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     this.selectStmt = this.db.prepare('SELECT * FROM migration_mappings WHERE zendesk_ticket_id = ? LIMIT 1');
 
     this.countStmt = this.db.prepare('SELECT COUNT(*) as count FROM migration_mappings');
+
+    this.updateSyncedStmt = this.db.prepare(
+      'UPDATE migration_mappings SET attributes_synced = 1 WHERE zendesk_ticket_id = ?'
+    );
 
     // Migra registros de migration-mapping.json legado, se existir
     this.importLegacyJsonIfNeeded(dir);
@@ -115,12 +130,22 @@ export class MappingService {
    */
   private loadMigratedSet(): void {
     try {
-      const rows = this.db.prepare('SELECT zendesk_ticket_id FROM migration_mappings').all() as Array<{
+      const rows = this.db
+        .prepare('SELECT zendesk_ticket_id, chatwoot_conversation_id, attributes_synced FROM migration_mappings')
+        .all() as Array<{
         zendesk_ticket_id: number;
+        chatwoot_conversation_id: number;
+        attributes_synced?: number;
       }>;
 
       for (const row of rows) {
-        this.migratedSet.add(Number(row.zendesk_ticket_id));
+        const tid = Number(row.zendesk_ticket_id);
+        const cid = Number(row.chatwoot_conversation_id);
+        this.migratedSet.add(tid);
+        this.conversationIdMap.set(tid, cid);
+        if (row.attributes_synced === 1) {
+          this.attributesSyncedSet.add(tid);
+        }
       }
     } catch {
       // Falha silenciosa
@@ -134,21 +159,91 @@ export class MappingService {
    */
   public recordMapping(entry: MigrationMappingEntry): void {
     const ticketId = Number(entry.zendeskTicketId);
+    const conversationId = Number(entry.chatwootConversationId);
     this.migratedSet.add(ticketId);
+    this.conversationIdMap.set(ticketId, conversationId);
+    this.attributesSyncedSet.add(ticketId);
 
     try {
       this.insertStmt.run(
         ticketId,
-        Number(entry.chatwootConversationId),
+        conversationId,
         String(entry.subject ?? ''),
         String(entry.requesterEmail ?? ''),
         Number(entry.attachmentsCount ?? 0),
         String(entry.zendeskUrl ?? ''),
         String(entry.chatwootUrl ?? ''),
-        String(entry.migratedAt ?? new Date().toISOString())
+        String(entry.migratedAt ?? new Date().toISOString()),
+        1
       );
     } catch (error) {
       console.error('[MappingService] Erro ao gravar no SQLite:', error);
+    }
+  }
+
+  /**
+   * Verifica se os atributos personalizados de um chamado já foram sincronizados no Chatwoot.
+   *
+   * @param zendeskTicketId ID do chamado no Zendesk.
+   */
+  public isAttributesSynced(zendeskTicketId: number): boolean {
+    return this.attributesSyncedSet.has(Number(zendeskTicketId));
+  }
+
+  /**
+   * Obtém o ID da conversa do Chatwoot mapeada para um chamado do Zendesk em O(1).
+   *
+   * @param zendeskTicketId ID do chamado no Zendesk.
+   * @returns ID da conversa correspondente ou null.
+   */
+  public getConversationId(zendeskTicketId: number): number | null {
+    return this.conversationIdMap.get(Number(zendeskTicketId)) ?? null;
+  }
+
+  /**
+   * Marca um chamado como tendo seus atributos sincronizados com sucesso no SQLite e memória.
+   *
+   * @param zendeskTicketId ID do chamado no Zendesk.
+   */
+  public markAttributesSynced(zendeskTicketId: number): void {
+    const tid = Number(zendeskTicketId);
+    this.attributesSyncedSet.add(tid);
+    try {
+      this.updateSyncedStmt.run(tid);
+    } catch {
+      // Ignora erro
+    }
+  }
+
+  /**
+   * Retorna todos os mapeamentos cadastrados para operações em lote.
+   */
+  public getAllMappings(): Array<{
+    zendeskTicketId: number;
+    chatwootConversationId: number;
+    zendeskUrl: string;
+    chatwootUrl: string;
+  }> {
+    try {
+      const rows = this.db
+        .prepare(
+          'SELECT zendesk_ticket_id, chatwoot_conversation_id, zendesk_url, chatwoot_url FROM migration_mappings'
+        )
+        .all() as Array<{
+        zendesk_ticket_id: number;
+        chatwoot_conversation_id: number;
+        zendesk_url: string;
+        chatwoot_url: string;
+      }>;
+
+      return rows.map(r => ({
+        zendeskTicketId: Number(r.zendesk_ticket_id),
+        chatwootConversationId: Number(r.chatwoot_conversation_id),
+        zendeskUrl: String(r.zendesk_url),
+        chatwootUrl: String(r.chatwoot_url),
+      }));
+    } catch {
+      return [];
     }
   }
 

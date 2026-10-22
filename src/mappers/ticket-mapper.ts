@@ -1,5 +1,12 @@
 import {DictionaryService} from '../dictionaries';
-import type {CreateMessageDTO, ExtractedAttachment, ZendeskComment, ZendeskTicket, ZendeskUser} from '../types';
+import type {
+  CreateMessageDTO,
+  ExtractedAttachment,
+  ZendeskComment,
+  ZendeskTicket,
+  ZendeskTicketField,
+  ZendeskUser,
+} from '../types';
 
 /**
  * Classe utilitária responsável por mapear e transformar entidades do Zendesk
@@ -286,5 +293,61 @@ export class TicketMapper {
     }
 
     return text;
+  }
+
+  /**
+   * Mapeia os campos personalizados (custom_fields) de um chamado do Zendesk para os
+   * custom_attributes correspondentes no formato aceito pelo Chatwoot, resolvendo rótulos
+   * legíveis para seletores e preservando metadados nativos de rastreabilidade.
+   *
+   * @spec REQ-MIG-003
+   * @spec REQ-MIG-006
+   * @spec REQ-MIG-011
+   * @param ticket Objeto do chamado no Zendesk.
+   * @param fieldsMap Mapa de definições de campos do Zendesk indexado por ID.
+   * @param fieldIdToChatwootKey Mapa de De-Para correlacionando o ID do campo Zendesk à attribute_key do Chatwoot.
+   * @param zendeskTicketUrl URL web direta do chamado no Zendesk.
+   * @returns Objeto de custom_attributes pronto para persistência no Chatwoot.
+   */
+  public static mapCustomAttributes(
+    ticket: ZendeskTicket,
+    fieldsMap: Map<number, ZendeskTicketField>,
+    fieldIdToChatwootKey: Map<number, string>,
+    zendeskTicketUrl?: string
+  ): Record<string, unknown> {
+    const attributes: Record<string, unknown> = {
+      zendesk_link: zendeskTicketUrl,
+      zendesk_ticket_id: ticket.id,
+      zendesk_ticket_url: zendeskTicketUrl,
+      zendesk_original_status: ticket.status,
+    };
+
+    if (ticket.custom_fields && Array.isArray(ticket.custom_fields)) {
+      for (const entry of ticket.custom_fields) {
+        if (entry.value === null || entry.value === undefined || entry.value === '') {
+          continue;
+        }
+
+        const targetKey = fieldIdToChatwootKey.get(entry.id);
+        if (!targetKey) {
+          continue;
+        }
+
+        const fieldDef = fieldsMap.get(entry.id);
+        let resolvedValue: unknown = entry.value;
+
+        // Se o campo for do tipo lista/seleção (tagger), resolve o nome amigável da opção cadastrada
+        if (fieldDef?.type === 'tagger' && Array.isArray(fieldDef.custom_field_options)) {
+          const matchOpt = fieldDef.custom_field_options.find(opt => opt.value === entry.value);
+          if (matchOpt?.name) {
+            resolvedValue = matchOpt.name;
+          }
+        }
+
+        attributes[targetKey] = resolvedValue;
+      }
+    }
+
+    return attributes;
   }
 }

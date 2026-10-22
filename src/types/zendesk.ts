@@ -48,6 +48,47 @@ export interface ZendeskCustomRole {
 }
 
 /**
+ * Representa uma opção selecionável de um campo do tipo lista/dropdown (tagger) no Zendesk.
+ *
+ * @spec REQ-MIG-003
+ * @spec REQ-MIG-006
+ */
+export interface ZendeskTicketFieldOption {
+  id: number;
+  name: string;
+  raw_name?: string;
+  value: string;
+  default?: boolean;
+}
+
+/**
+ * Representa uma definição de campo de chamado (Ticket Field) no Zendesk.
+ *
+ * @spec REQ-MIG-003
+ * @spec REQ-MIG-006
+ */
+export interface ZendeskTicketField {
+  id: number;
+  type: string;
+  title: string;
+  raw_title?: string;
+  description?: string;
+  active: boolean;
+  key?: string | null;
+  custom_field_options?: ZendeskTicketFieldOption[];
+}
+
+/**
+ * Entrada de valor de campo personalizado em um chamado do Zendesk.
+ *
+ * @spec REQ-MIG-006
+ */
+export interface ZendeskCustomFieldEntry {
+  id: number;
+  value: unknown;
+}
+
+/**
  * Representa um usuário (requisitante ou agente) no Zendesk.
  *
  * @spec REQ-MIG-002
@@ -106,6 +147,7 @@ export interface ZendeskTicket {
   assignee_id?: number;
   group_id?: number;
   tags: string[];
+  custom_fields?: ZendeskCustomFieldEntry[];
   created_at: string;
   updated_at: string;
 }

@@ -3,11 +3,13 @@ import {DictionaryService} from '../dictionaries';
 import type {
   ChatwootContact,
   ChatwootConversation,
+  ChatwootCustomAttributeDefinition,
   ChatwootLabel,
   ChatwootMessage,
   ChatwootTeam,
   CreateContactDTO,
   CreateConversationDTO,
+  CreateCustomAttributeDefinitionDTO,
   CreateMessageDTO,
   MessageAttachmentPayload,
 } from '../types';
@@ -203,6 +205,67 @@ export class ChatwootClient {
         description: description ?? dict.teams.defaultDescription(name),
         allow_auto_assign: true,
       }),
+    });
+  }
+
+  /**
+   * Lista todas as definições de atributos personalizados cadastradas no Chatwoot.
+   *
+   * @spec REQ-MIG-003
+   * @param model Modelo do atributo ('conversation_attribute' ou 'contact_attribute').
+   * @returns Lista de definições de atributos personalizados.
+   */
+  public async listCustomAttributeDefinitions(
+    model: 'conversation_attribute' | 'contact_attribute' = 'conversation_attribute'
+  ): Promise<ChatwootCustomAttributeDefinition[]> {
+    try {
+      const data = await this.request<ChatwootCustomAttributeDefinition[]>(
+        `/accounts/${this.accountId}/custom_attribute_definitions`
+      );
+      if (!Array.isArray(data)) {
+        return [];
+      }
+      return data.filter(d => !model || d.attribute_model === model);
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Cria uma nova definição de atributo personalizado no Chatwoot.
+   *
+   * @spec REQ-MIG-003
+   * @param dto Dados para criação da definição do atributo.
+   * @returns Definição de atributo criada.
+   */
+  public async createCustomAttributeDefinition(
+    dto: CreateCustomAttributeDefinitionDTO
+  ): Promise<ChatwootCustomAttributeDefinition> {
+    return await this.request<ChatwootCustomAttributeDefinition>(
+      `/accounts/${this.accountId}/custom_attribute_definitions`,
+      {
+        method: 'POST',
+        body: JSON.stringify(dto),
+      }
+    );
+  }
+
+  /**
+   * Atualiza exclusivamente os atributos personalizados (custom_attributes) de uma conversa existente no Chatwoot.
+   * Executa em sub-segundo sem interferir em mensagens históricas, notas ou anexos.
+   *
+   * @spec REQ-MIG-006
+   * @spec REQ-MIG-012
+   * @param conversationId ID da conversa no Chatwoot.
+   * @param customAttributes Objeto contendo os pares chave/valor de atributos a persistir.
+   */
+  public async updateConversationCustomAttributes(
+    conversationId: number,
+    customAttributes: Record<string, unknown>
+  ): Promise<void> {
+    await this.request(`/accounts/${this.accountId}/conversations/${conversationId}/custom_attributes`, {
+      method: 'POST',
+      body: JSON.stringify({custom_attributes: customAttributes}),
     });
   }
 

@@ -7,6 +7,7 @@ import type {
   ZendeskSearchResponse,
   ZendeskTag,
   ZendeskTicket,
+  ZendeskTicketField,
   ZendeskUser,
 } from '../types';
 
@@ -36,6 +37,7 @@ export class ZendeskClient {
   private readonly authHeader: string;
   private readonly userCache: Map<number, ZendeskUser> = new Map();
   private readonly customRolesCache: Map<number, string> = new Map();
+  private readonly ticketFieldsCache: Map<number, ZendeskTicketField> = new Map();
 
   /**
    * Inicializa o cliente do Zendesk com base nas configurações da aplicação.
@@ -297,6 +299,40 @@ export class ZendeskClient {
       // Planos sem suporte a custom roles ou falta de permissão retornam vazio
       return [];
     }
+  }
+
+  /**
+   * Obtém a lista de campos de chamados (Ticket Fields) cadastrados no Zendesk.
+   *
+   * @spec REQ-MIG-003
+   * @returns Lista de Ticket Fields do Zendesk.
+   */
+  public async listTicketFields(): Promise<ZendeskTicketField[]> {
+    if (this.ticketFieldsCache.size > 0) {
+      return Array.from(this.ticketFieldsCache.values());
+    }
+
+    try {
+      const data = await this.request<{ticket_fields: ZendeskTicketField[]}>('/ticket_fields.json');
+      const fields = data.ticket_fields ?? [];
+      fields.forEach(f => this.ticketFieldsCache.set(f.id, f));
+      return fields;
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Retorna um mapa indexado por ID de todos os campos de chamados para busca rápida O(1).
+   *
+   * @spec REQ-MIG-003
+   * @spec REQ-MIG-006
+   */
+  public async getTicketFieldsMap(): Promise<Map<number, ZendeskTicketField>> {
+    if (this.ticketFieldsCache.size === 0) {
+      await this.listTicketFields();
+    }
+    return this.ticketFieldsCache;
   }
 
   /**
